@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, ArrowRight, RotateCcw, Download, Upload, CheckCircle2, Search } from 'lucide-react';
 import resources from './data/resources.json';
 import { buildFallbackCatalog, parseResourceCatalog } from './lib/resourceCatalog.js';
 import { buildBundleModel } from './lib/bundleModel.js';
@@ -104,7 +103,45 @@ export default function App() {
   const [copyState, setCopyState] = useState('idle');
   const [tfExportMode, setTfExportMode] = useState(TF_EXPORT_MODE_EXPORT);
   const importRef = useRef(null);
+  const versionDropdownRef = useRef(null);
+  const selectedCatalogVersionRef = useRef(selectedCatalogVersion);
   const allResources = resourceCatalog.resourceTypes;
+
+  useEffect(() => {
+    selectedCatalogVersionRef.current = selectedCatalogVersion;
+  }, [selectedCatalogVersion]);
+
+  useEffect(() => {
+    const el = versionDropdownRef.current;
+    if (!el) return;
+
+    const handler = (event) => {
+      const next = event?.target?.value ?? event?.detail?.value ?? '';
+      const normalizedNext = next || LATEST_DEPENDENCY_TREE_VERSION;
+
+      if (normalizedNext === selectedCatalogVersionRef.current) return;
+      setSelectedCatalogVersion(normalizedNext);
+    };
+
+    el.addEventListener('guxchange', handler);
+    el.addEventListener('change', handler);
+
+    return () => {
+      el.removeEventListener('guxchange', handler);
+      el.removeEventListener('change', handler);
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = versionDropdownRef.current;
+    if (!el) return;
+
+    if (el.value !== selectedCatalogVersion) {
+      el.value = selectedCatalogVersion;
+    }
+
+    el.setAttribute('value', selectedCatalogVersion);
+  }, [selectedCatalogVersion, catalogVersionOptions]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -417,15 +454,19 @@ export default function App() {
         <div className="gcPageMeta">
           <div className="gcHeaderLinks">
             <input ref={importRef} type="file" accept="application/json,.json" onChange={importWorkspaceFile} hidden />
-            <button type="button" className="gcHeaderLink" onClick={() => importRef.current?.click()}><Upload size={14}/> Import</button>
-            <button type="button" className="gcHeaderLink" onClick={downloadWorkspace} disabled={bundles.length === 0} title={bundles.length === 0 ? 'Create a bundle before exporting a workspace.' : 'Export workspace JSON'}><Download size={14}/> Export</button>
-            <button type="button" className="gcClearButton" onClick={reset}><RotateCcw size={14}/> Reset</button>
+            <button type="button" className="gcHeaderLink" onClick={() => importRef.current?.click()}>Import</button>
+            <button type="button" className="gcHeaderLink" onClick={downloadWorkspace} disabled={bundles.length === 0} title={bundles.length === 0 ? 'Create a bundle before exporting a workspace.' : 'Export workspace JSON'}>Export</button>
+            <button type="button" className="gcClearButton" onClick={reset}>Reset</button>
           </div>
           <div className="gcVersionPicker">
             <span className="gcMetaLabel">Version:</span>
-            <select id="catalog-version-select" className="gcSelectInput" aria-label="Dependency catalog version" value={selectedCatalogVersion} onChange={event => setSelectedCatalogVersion(event.target.value)}>
-              {catalogVersionOptions.map(version => <option key={version} value={version}>{getDependencyTreeVersionLabel(version)}</option>)}
-            </select>
+            <gux-dropdown ref={versionDropdownRef} value={selectedCatalogVersion}>
+              <gux-listbox>
+                {catalogVersionOptions.map(version => (
+                  <gux-option key={version} value={version}>{getDependencyTreeVersionLabel(version)}</gux-option>
+                ))}
+              </gux-listbox>
+            </gux-dropdown>
           </div>
         </div>
       </div>
@@ -451,21 +492,29 @@ export default function App() {
         <div className="section-title">
           <div><h2>Bundles</h2><p>Select a bundle to build its export template.</p></div>
           <div className="bundle-nav-actions">
-            {!isAddingBundle && <button type="button" className="gcHeaderLink" onClick={startAddingBundle}><Plus size={14}/> Add bundle</button>}
+            {!isAddingBundle && <button type="button" className="gcHeaderLink" onClick={startAddingBundle}>Add bundle</button>}
           </div>
         </div>
         {isAddingBundle && <div className="field add-bundle-form">
           <label htmlFor="new-bundle-name">Add bundle</label>
           <div className="inline">
               <input id="new-bundle-name" value={newBundleName} onChange={event => setNewBundleName(event.target.value)} placeholder="letters, numbers, _, and -" />
-            <button type="button" className="gcHeaderLink" onClick={addBundle}><CheckCircle2 size={14}/> Save</button>
+            <button type="button" className="gcHeaderLink" onClick={addBundle}>Save</button>
             <button type="button" className="gcClearButton" onClick={cancelAddingBundle}>Cancel</button>
           </div>
         </div>}
         <div className="bundle-list">
           {bundles.map(bundle => <button type="button" key={bundle.id} className={bundle.id === selectedBundleId ? 'bundle selected' : 'bundle'} onClick={() => { setSelectedBundleId(bundle.id); setQuery(''); setSelectedQuery(''); }}>
             <span><strong>{bundle.name}</strong><small>{getBundleResources(bundle).length} selected</small></span>
-            {bundles.length > 1 && <Trash2 className="danger" size={14} onClick={event => { event.stopPropagation(); deleteBundle(bundle.id); }} />}
+            {bundles.length > 1 && (
+              <button
+                type="button"
+                className="gcClearButton danger"
+                onClick={event => { event.stopPropagation(); deleteBundle(bundle.id); }}
+              >
+                delete
+              </button>
+            )}
           </button>)}
         </div>
       </section>
@@ -493,7 +542,7 @@ export default function App() {
                   : <>Paste one whole resource type per line. Patterns like <code>::^Name$</code> are normalized to the bare type.</>}
               </p>
             </div>
-            <strong>{selectedBundleMode === 'catalog' ? availableResources.length : parsedPasteResourceTypes.length}</strong>
+            <gux-badge>{selectedBundleMode === 'catalog' ? availableResources.length : parsedPasteResourceTypes.length}</gux-badge>
           </div>
 
           <div className="input-toolbar">
@@ -502,9 +551,9 @@ export default function App() {
               <button type="button" className={selectedBundleMode === 'paste' ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'} aria-checked={selectedBundleMode === 'paste'} onClick={() => setSelectedBundleMode('paste')}>Paste</button>
             </div>
             {selectedBundleMode === 'catalog' && <div className="search">
-              <Search size={16}/>
               <input
                 type="search"
+                className="gcSearchInput"
                 value={query}
                 onChange={event => setQuery(event.target.value)}
                 placeholder="filter e.g. flow, routing, outbound"
@@ -517,7 +566,7 @@ export default function App() {
           <div className="resource-list">
             {availableResources.map(resource => <div className="resource" key={resource}>
               <code>{resource}</code>
-              <button type="button" className="gcHeaderLink" onClick={() => moveToBundle(resource)} title={`Add to ${selectedBundle.name}`}><ArrowRight size={14}/> add</button>
+              <button type="button" className="gcHeaderLink" onClick={() => moveToBundle(resource)} title={`Add to ${selectedBundle.name}`}>add</button>
             </div>)}
             {availableResources.length === 0 && <p className="empty">No available resources match that filter.</p>}
           </div>
@@ -548,12 +597,12 @@ export default function App() {
         <section className="gcCard selected-panel">
           <div className="section-title">
             <div><h2>{selectedBundle.name}</h2><p>Primary resource types for this bundle. First-level dependencies drive <code>replace_with_datasource</code>.</p></div>
-            <strong>{selectedBundleResources.length}</strong>
+            <gux-badge>{selectedBundleResources.length}</gux-badge>
           </div>
           <div className="search">
-            <Search size={16}/>
             <input
               type="search"
+              className="gcSearchInput"
               value={selectedQuery}
               onChange={event => setSelectedQuery(event.target.value)}
               placeholder="filter selected resources"

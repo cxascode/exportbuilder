@@ -483,6 +483,11 @@ textarea:focus-visible,
   font-weight: 600;
 }
 
+.bundle .gcClearButton.danger {
+  flex-shrink: 0;
+  color: #b91c1c;
+}
+
 .danger { color: #b91c1c; }
 
 .grid {
@@ -532,7 +537,8 @@ textarea:focus-visible,
   outline-offset: 1px;
 }
 
-.search input {
+.search input,
+.search .gcSearchInput {
   flex: 1;
   border: 0;
   padding: 0;

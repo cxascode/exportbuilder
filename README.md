@@ -4,7 +4,7 @@
 
 Bundle pipeline exports without hand-maintaining dependency wiring.
 
-Bundler is a small React app that produces a ready-to-wear `genesyscloud_tf_export` block for CX as Code pipelines. It seeds `include_filter_resources`, suggests `replace_with_datasource` patterns from the Genesys Cloud dependency tree, and sets the cxascode-friendly defaults (`enable_dependency_resolution`, HCL export, and related settings). You tailor the rest — named regex filters, org-specific replace patterns, and anything beyond the starter.
+Bundler is a small React app built on **Genesys Spark** (`gux-*` components) that produces a ready-to-wear `genesyscloud_tf_export` block for CX as Code pipelines. It seeds `include_filter_resources`, suggests `replace_with_datasource` patterns from the Genesys Cloud dependency tree, and sets the cxascode-friendly defaults (`enable_dependency_resolution`, HCL export, and related settings). You tailor the rest — named regex filters, org-specific replace patterns, and anything beyond the starter.
 
 ## Why Bundler?
 
