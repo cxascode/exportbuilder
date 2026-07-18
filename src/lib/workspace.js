@@ -1,3 +1,5 @@
+import { CORE_BUNDLE_NAME, getTfExportResourceName } from './resourceModel.js';
+
 export const WORKSPACE_SCHEMA = 'cxascode-bundler';
 export const WORKSPACE_VERSION = 1;
 
@@ -6,13 +8,13 @@ export function buildWorkspace({ bundles, model }) {
     schema: WORKSPACE_SCHEMA,
     version: WORKSPACE_VERSION,
     exportedAt: new Date().toISOString(),
-    bundles: bundles.map(bundle => {
+    bundles: bundles.map((bundle, bundleIndex) => {
       const generatedBundle = model?.bundles?.find(item => item.name === bundle.name);
 
       return {
         name: bundle.name,
         mode: bundle.mode === 'paste' ? 'paste' : 'catalog',
-        tfExportResourceName: bundle.tfExportResourceName || generatedBundle?.tfExportResourceName || 'tf_export',
+        tfExportResourceName: generatedBundle?.tfExportResourceName || getTfExportResourceName(bundleIndex, bundle.name),
         selectedResources: Array.isArray(bundle.selectedResources) ? bundle.selectedResources : [],
         pastedIncludeFilterResources: bundle.pastedIncludeFilterResources || '',
         firstLevelDependencies: generatedBundle?.firstLevelDependencies || [],
@@ -35,7 +37,7 @@ export function downloadJsonFile({ filename, data }) {
   URL.revokeObjectURL(url);
 }
 
-export function parseWorkspace({ rawText, knownResources, cleanName, createId }) {
+export function parseWorkspace({ rawText, knownResources, sanitizeBundleName, createId }) {
   const workspace = JSON.parse(rawText || '{}');
 
   if (workspace.schema !== WORKSPACE_SCHEMA || !Array.isArray(workspace.bundles)) {
@@ -47,7 +49,7 @@ export function parseWorkspace({ rawText, knownResources, cleanName, createId })
 
   const bundles = workspace.bundles
     .map(bundle => {
-      const name = cleanName(String(bundle.name || ''));
+      const name = sanitizeBundleName(String(bundle.name || ''));
       const selectedResources = Array.isArray(bundle.selectedResources)
         ? [...new Set(bundle.selectedResources)].filter(resource => knownResourceSet.has(resource)).sort()
         : [];
@@ -56,7 +58,6 @@ export function parseWorkspace({ rawText, knownResources, cleanName, createId })
         id: createId(),
         name,
         mode: bundle.mode === 'paste' ? 'paste' : 'catalog',
-        tfExportResourceName: cleanName(String(bundle.tfExportResourceName || 'tf_export')) || 'tf_export',
         selectedResources,
         pastedIncludeFilterResources: String(bundle.pastedIncludeFilterResources || ''),
       };
@@ -67,5 +68,11 @@ export function parseWorkspace({ rawText, knownResources, cleanName, createId })
       return true;
     });
 
-  return { bundles };
+  return { bundles: applyCoreBundleName(bundles) };
+}
+
+function applyCoreBundleName(bundles) {
+  if (bundles.length === 0 || bundles[0].name === CORE_BUNDLE_NAME) return bundles;
+
+  return [{ ...bundles[0], name: CORE_BUNDLE_NAME }, ...bundles.slice(1)];
 }

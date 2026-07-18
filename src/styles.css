@@ -199,7 +199,6 @@ code, pre, .gcMono {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   box-sizing: border-box;
   height: var(--gc-action-height);
   padding: 0 var(--gc-action-padding-x);
@@ -209,6 +208,7 @@ code, pre, .gcMono {
   color: var(--gc-blue);
   font-size: var(--gc-action-font-size);
   font-weight: var(--gc-action-font-weight);
+  cursor: pointer;
   white-space: nowrap;
 }
 
@@ -216,6 +216,11 @@ code, pre, .gcMono {
 .gcCopyButton:focus-visible:not(:disabled) {
   background: var(--gc-blue-weak);
   outline: none;
+}
+
+.gcCopyButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .gcVersionPicker {

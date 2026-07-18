@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, ArrowRight, RotateCcw, Download, Upload, CheckCircle2, Search, ClipboardCopy } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, RotateCcw, Download, Upload, CheckCircle2, Search } from 'lucide-react';
 import resources from './data/resources.json';
 import { buildFallbackCatalog, parseResourceCatalog } from './lib/resourceCatalog.js';
 import { buildBundleModel } from './lib/bundleModel.js';
 import {
-  cleanName,
   getAssignedResources,
   getAvailableBundleResources,
   getBundleResources,
   getBundleStats,
+  sanitizeBundleName,
+  CORE_BUNDLE_NAME,
   validateBundles,
 } from './lib/resourceModel.js';
 import { buildWorkspace, downloadJsonFile, parseWorkspace } from './lib/workspace.js';
@@ -75,12 +76,11 @@ ${replaceWithDatasourceBlock}  split_files_by_resource            = false
 ${legacyArchitectFlowExporterLine}}`;
 }
 
-function buildDefaultBundle(name = 'export') {
+function buildDefaultBundle() {
   return {
     id: crypto.randomUUID(),
-    name,
+    name: CORE_BUNDLE_NAME,
     mode: 'catalog',
-    tfExportResourceName: 'tf_export',
     selectedResources: [],
     pastedIncludeFilterResources: '',
   };
@@ -101,7 +101,7 @@ export default function App() {
   const [resourceDialogType, setResourceDialogType] = useState(null);
   const [query, setQuery] = useState('');
   const [selectedQuery, setSelectedQuery] = useState('');
-  const [copiedOutput, setCopiedOutput] = useState(null);
+  const [copyState, setCopyState] = useState('idle');
   const [tfExportMode, setTfExportMode] = useState(TF_EXPORT_MODE_EXPORT);
   const importRef = useRef(null);
   const allResources = resourceCatalog.resourceTypes;
@@ -239,9 +239,11 @@ export default function App() {
     return model.bundles.find(bundle => bundle.name === selectedBundle.name) || model.bundles[0] || null;
   }, [model.bundles, selectedBundle.name]);
 
-  const selectedTfExportTemplate = useMemo(() => {
-    return buildTfExportTemplate(selectedGeneratedBundle, tfExportMode);
-  }, [selectedGeneratedBundle, tfExportMode]);
+  const mainTfTemplate = useMemo(() => {
+    return model.bundles
+      .map(bundle => buildTfExportTemplate(bundle, tfExportMode))
+      .join('\n\n');
+  }, [model.bundles, tfExportMode]);
 
   function startAddingBundle() {
     setNewBundleName('');
@@ -255,11 +257,12 @@ export default function App() {
   }
 
   function addBundle() {
-    const name = cleanName(newBundleName || 'export');
+    const name = sanitizeBundleName(newBundleName);
 
-    if (!name || bundles.some(bundle => bundle.name === name)) return;
+    if (!name || name === CORE_BUNDLE_NAME || bundles.some(bundle => bundle.name === name)) return;
 
-    const bundle = buildDefaultBundle(name);
+    const bundle = buildDefaultBundle();
+    bundle.name = name;
 
     setBundles(current => [...current, bundle]);
     setSelectedBundleId(bundle.id);
@@ -273,6 +276,11 @@ export default function App() {
       if (current.length <= 1) return current;
 
       const next = current.filter(bundle => bundle.id !== id);
+
+      if (next.length > 0 && next[0].name !== CORE_BUNDLE_NAME) {
+        next[0] = { ...next[0], name: CORE_BUNDLE_NAME };
+      }
+
       setSelectedBundleId(next[0]?.id || null);
       setQuery('');
       return next;
@@ -351,7 +359,7 @@ export default function App() {
         const workspace = parseWorkspace({
           rawText: String(reader.result || '{}'),
           knownResources: allResources,
-          cleanName,
+          sanitizeBundleName,
           createId: () => crypto.randomUUID(),
         });
 
@@ -369,13 +377,14 @@ export default function App() {
     reader.readAsText(file);
   }
 
-  async function copyGeneratedOutput(key, value) {
+  async function copyGeneratedOutput(value) {
     try {
       await navigator.clipboard.writeText(value);
-      setCopiedOutput(key);
-      window.setTimeout(() => setCopiedOutput(current => current === key ? null : current), 1500);
+      setCopyState('copied');
+      window.setTimeout(() => setCopyState('idle'), 1500);
     } catch {
-      window.alert('Unable to copy to clipboard. Select the text and copy it manually.');
+      setCopyState('failed');
+      window.setTimeout(() => setCopyState('idle'), 1500);
     }
   }
 
@@ -432,7 +441,7 @@ export default function App() {
         {isAddingBundle && <div className="field add-bundle-form">
           <label htmlFor="new-bundle-name">Add bundle</label>
           <div className="inline">
-            <input id="new-bundle-name" value={newBundleName} onChange={event => setNewBundleName(event.target.value)} placeholder="export-name" />
+              <input id="new-bundle-name" value={newBundleName} onChange={event => setNewBundleName(event.target.value)} placeholder="letters, numbers, _, and -" />
             <button type="button" className="gcHeaderLink" onClick={addBundle}><CheckCircle2 size={14}/> Save</button>
             <button type="button" className="gcClearButton" onClick={cancelAddingBundle}>Cancel</button>
           </div>
@@ -584,9 +593,16 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <button type="button" className="gcCopyButton" onClick={() => copyGeneratedOutput('main.tf', selectedTfExportTemplate)} title="Copy main.tf to clipboard"><ClipboardCopy size={14}/>{copiedOutput === 'main.tf' ? 'Copied' : 'Copy'}</button>
+              <button
+                type="button"
+                className="gcCopyButton"
+                onClick={() => copyGeneratedOutput(mainTfTemplate)}
+                disabled={!mainTfTemplate}
+              >
+                {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy'}
+              </button>
             </div>
-            <pre>{selectedTfExportTemplate}</pre>
+            <pre>{mainTfTemplate}</pre>
           </div>
         </section>
       </div>

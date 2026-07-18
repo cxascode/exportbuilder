@@ -1,4 +1,4 @@
-import { getExportResources, getFirstLevelDependencies, getBundleResources } from './resourceModel.js';
+import { getExportResources, getFirstLevelDependencies, getBundleResources, getTfExportResourceName } from './resourceModel.js';
 import { buildPasteModeModel, parseIncludeFilterResourcesText } from './includeFilterParser.js';
 
 const FLOW_RESOURCE_TYPE = 'genesyscloud_flow';
@@ -17,7 +17,7 @@ function getReplaceWithDatasource(resources) {
   return uniqueSorted(resources).map(resource => `${resource}::.*`);
 }
 
-function buildCatalogBundleModel(bundle, dependencyMap) {
+function buildCatalogBundleModel(bundle, dependencyMap, bundleIndex) {
   const selectedResources = getBundleResources(bundle).sort();
   const firstLevelDependencies = getFirstLevelDependencies({
     selectedResources,
@@ -31,7 +31,7 @@ function buildCatalogBundleModel(bundle, dependencyMap) {
   return {
     name: bundle.name,
     mode: 'catalog',
-    tfExportResourceName: bundle.tfExportResourceName || 'tf_export',
+    tfExportResourceName: getTfExportResourceName(bundleIndex, bundle.name),
     selectedResources,
     primaryResourceTypes: selectedResources,
     firstLevelDependencies,
@@ -41,7 +41,7 @@ function buildCatalogBundleModel(bundle, dependencyMap) {
   };
 }
 
-function buildPasteBundleModel(bundle, dependencyMap) {
+function buildPasteBundleModel(bundle, dependencyMap, bundleIndex) {
   const filterEntries = parseIncludeFilterResourcesText(bundle.pastedIncludeFilterResources);
   const pasteModel = buildPasteModeModel({
     filterEntries,
@@ -51,7 +51,7 @@ function buildPasteBundleModel(bundle, dependencyMap) {
   return {
     name: bundle.name,
     mode: 'paste',
-    tfExportResourceName: bundle.tfExportResourceName || 'tf_export',
+    tfExportResourceName: getTfExportResourceName(bundleIndex, bundle.name),
     selectedResources: pasteModel.primaryResourceTypes,
     primaryResourceTypes: pasteModel.primaryResourceTypes,
     firstLevelDependencies: pasteModel.firstLevelDependencies,
@@ -70,12 +70,12 @@ export function buildBundleModel({
   stats,
   validation,
 }) {
-  const bundleModels = bundles.map(bundle => {
+  const bundleModels = bundles.map((bundle, bundleIndex) => {
     if (bundle.mode === 'paste') {
-      return buildPasteBundleModel(bundle, dependencyMap);
+      return buildPasteBundleModel(bundle, dependencyMap, bundleIndex);
     }
 
-    return buildCatalogBundleModel(bundle, dependencyMap);
+    return buildCatalogBundleModel(bundle, dependencyMap, bundleIndex);
   });
 
   return {

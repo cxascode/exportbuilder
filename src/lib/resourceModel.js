@@ -6,6 +6,30 @@ export function cleanName(value) {
     .replace(/^-+|-+$/g, '');
 }
 
+export function sanitizeBundleName(value) {
+  const sanitized = String(value || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^[-_]+|[-_]+$/g, '');
+
+  if (!sanitized) return '';
+
+  if (/^[0-9]/.test(sanitized)) {
+    return `_${sanitized}`;
+  }
+
+  return sanitized;
+}
+
+export const CORE_BUNDLE_NAME = 'tf_export';
+
+export function getTfExportResourceName(bundleIndex, bundleName) {
+  if (bundleIndex === 0) return CORE_BUNDLE_NAME;
+
+  return sanitizeBundleName(bundleName);
+}
+
 export function getAssignedResources(bundles) {
   return new Map(bundles.flatMap(bundle => getBundleResources(bundle).map(resource => [resource, bundle.name])));
 }
