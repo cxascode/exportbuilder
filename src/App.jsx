@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import resources from './data/resources.json';
 import { buildFallbackCatalog, parseResourceCatalog } from './lib/resourceCatalog.js';
 import { buildExportModel } from './lib/exportModel.js';
@@ -582,21 +583,25 @@ export default function App() {
                 <strong>{exportItem.name}</strong>
                 <small>{getExportResourceCount(exportItem)} {exportItem.mode === 'paste' ? 'pasted' : 'selected'}</small>
               </span>
-              <div className="actions">
+              <div className="export-actions">
                 <button
                   type="button"
-                  className="gcHeaderLink"
+                  className="export-action"
+                  title="Rename export"
+                  aria-label="Rename export"
                   onClick={event => { event.stopPropagation(); startRenamingExport(exportItem); }}
                 >
-                  rename
+                  <Pencil size={14} aria-hidden="true" />
                 </button>
                 {exports.length > 1 && (
                   <button
                     type="button"
-                    className="gcClearButton destructive"
+                    className="export-action export-action--destructive"
+                    title="Remove export"
+                    aria-label="Remove export"
                     onClick={event => { event.stopPropagation(); deleteExport(exportItem.id); }}
                   >
-                    remove
+                    <Trash2 size={14} aria-hidden="true" />
                   </button>
                 )}
               </div>

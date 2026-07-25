@@ -493,16 +493,41 @@ textarea:focus-visible,
   font-weight: 600;
 }
 
-.export .actions {
-  flex-shrink: 0;
+.export-actions {
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
-.export .actions .gcHeaderLink,
-.export .actions .gcClearButton {
+.export-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 24px;
   height: 24px;
-  padding: 0 8px;
-  font-size: 11px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gc-text);
+  cursor: pointer;
+}
+
+.export-action:hover,
+.export-action:focus-visible {
+  background: rgba(0, 0, 0, 0.06);
+  outline: none;
+}
+
+.export-action--destructive {
+  color: #b91c1c;
+}
+
+.export-action--destructive:hover,
+.export-action--destructive:focus-visible {
+  background: #fef2f2;
 }
 
 .export-rename-form {
