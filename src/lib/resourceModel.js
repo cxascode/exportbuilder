@@ -28,6 +28,14 @@ export function getTfExportResourceName(exportName) {
   return sanitizeExportName(exportName) || CORE_EXPORT_NAME;
 }
 
+export function getTfExportDirectory(tfExportResourceName) {
+  if (tfExportResourceName === CORE_EXPORT_NAME) {
+    return './genesyscloud';
+  }
+
+  return `./genesyscloud-${tfExportResourceName}`;
+}
+
 export function getAssignedResources(exports) {
   return new Map(exports.flatMap(exportItem => getExportResources(exportItem).map(resource => [resource, exportItem.name])));
 }

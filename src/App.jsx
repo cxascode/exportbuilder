@@ -9,6 +9,7 @@ import {
   getExportStats,
   sanitizeExportName,
   CORE_EXPORT_NAME,
+  getTfExportDirectory,
   validateExports,
 } from './lib/resourceModel.js';
 import { buildWorkspace, downloadJsonFile, parseWorkspace } from './lib/workspace.js';
@@ -37,6 +38,7 @@ function buildTfExportTemplate(exportItem, mode = TF_EXPORT_MODE_EXPORT) {
   const replaceWithDatasource = exportItem?.replaceWithDatasource || [];
   const tfExportResourceName = exportItem?.tfExportResourceName || 'tf_export';
   const isExportState = mode === TF_EXPORT_MODE_EXPORT_STATE;
+  const directory = getTfExportDirectory(tfExportResourceName);
 
   const includeFilterBlock = includeFilterResources.length === 0
     ? '  include_filter_resources           = []\n'
@@ -57,7 +59,7 @@ ${formatTerraformResourceList(replaceWithDatasource)}
     : '  use_legacy_architect_flow_exporter = false\n';
 
   return `resource "genesyscloud_tf_export" "${tfExportResourceName}" {
-  directory                          = "./genesyscloud"
+  directory                          = "${directory}"
   enable_dependency_resolution       = ${isExportState ? 'false' : 'true'}
   export_format                      = "hcl"
   exclude_attributes                 = []
