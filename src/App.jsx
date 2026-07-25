@@ -16,6 +16,11 @@ import {
 import { buildWorkspace, downloadJsonFile, parseWorkspace } from './lib/workspace.js';
 import { getExportResourceCount, parsePastedResourceTypes } from './lib/includeFilterParser.js';
 import {
+  clearPermalinkResource,
+  readPermalinkResource,
+  setPermalinkResource,
+} from './lib/permalink.js';
+import {
   buildDependencyTreeUrl,
   buildDependencyTreeVersionOptionsFromIndex,
   cacheDependencyTreeVersionOptions,
@@ -70,19 +75,21 @@ ${replaceWithDatasourceBlock}  split_files_by_resource            = false
 ${legacyArchitectFlowExporterLine}}`;
 }
 
-function buildDefaultExport() {
+function buildDefaultExport(prefillResource = null) {
+  const normalizedResource = String(prefillResource || '').trim();
+
   return {
     id: crypto.randomUUID(),
     name: CORE_EXPORT_NAME,
     mode: 'catalog',
-    selectedResources: [],
+    selectedResources: normalizedResource ? [normalizedResource] : [],
     pastedIncludeFilterResources: '',
   };
 }
 
 export default function App() {
   const initialState = useMemo(() => {
-    const exportItem = buildDefaultExport();
+    const exportItem = buildDefaultExport(readPermalinkResource());
     return { exports: [exportItem], selectedExportId: exportItem.id };
   }, []);
   const [resourceCatalog, setResourceCatalog] = useState(BUNDLED_RESOURCE_CATALOG);
@@ -107,6 +114,24 @@ export default function App() {
   useEffect(() => {
     selectedCatalogVersionRef.current = selectedCatalogVersion;
   }, [selectedCatalogVersion]);
+
+  useEffect(() => {
+    const defaultExport = exports.find(exportItem => exportItem.name === CORE_EXPORT_NAME);
+
+    if (!defaultExport || defaultExport.mode === 'paste') {
+      clearPermalinkResource();
+      return;
+    }
+
+    const selected = getExportResources(defaultExport);
+
+    if (selected.length === 1) {
+      setPermalinkResource(selected[0]);
+      return;
+    }
+
+    clearPermalinkResource();
+  }, [exports]);
 
   useEffect(() => {
     const el = versionDropdownRef.current;
