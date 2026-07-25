@@ -86,23 +86,6 @@ code, pre, .gcMono {
   gap: 8px;
 }
 
-.gcBetaBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  height: var(--gc-chip-height);
-  padding: 0 var(--gc-chip-padding-x);
-  border-radius: var(--gc-chip-radius);
-  border: 1px solid var(--gc-border);
-  background: rgba(109, 40, 217, 0.12);
-  color: #6d28d9;
-  font-size: var(--gc-chip-font-size);
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-}
-
 .gcPageTitle {
   margin: 0;
   font-size: 22px;

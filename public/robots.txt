@@ -1,3 +1,2 @@
-# Beta — not listed in cxascode.github.io sitemap
 User-agent: *
 Disallow:

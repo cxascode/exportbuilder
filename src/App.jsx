@@ -494,7 +494,6 @@ export default function App() {
         <div className="gcPageTitleGroup">
           <div className="gcPageTitleLine">
             <h1 className="gcPageTitle">CX as Code Export Builder</h1>
-            <span className="gcBetaBadge">Beta</span>
           </div>
           <p className="gcPageSubtitle">Create exports without hand-maintaining dependency wiring.</p>
         </div>

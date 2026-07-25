@@ -1,4 +1,4 @@
-# CX as Code Export Builder (Beta)
+# CX as Code Export Builder
 
 **Live app:** [https://cxascode.github.io/exportbuilder/](https://cxascode.github.io/exportbuilder/)
 
