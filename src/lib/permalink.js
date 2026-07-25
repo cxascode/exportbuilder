@@ -38,7 +38,7 @@ function getResourcePathSegment(pathname, basePath = import.meta.env.BASE_URL) {
   return RESOURCE_TYPE_PATTERN.test(decoded) ? decoded : null;
 }
 
-function buildResourcePathname(resource, basePath = import.meta.env.BASE_URL) {
+export function buildResourcePathname(resource, basePath = import.meta.env.BASE_URL) {
   const normalizedBase = normalizeBasePath(basePath);
   const normalized = String(resource || '').trim();
 
