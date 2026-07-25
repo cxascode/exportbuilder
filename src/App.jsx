@@ -32,14 +32,6 @@ function formatTerraformResourceList(values) {
   return values.map(value => `    "${value}"`).join(',\n');
 }
 
-function getLegacyArchitectFlowExporterLine(bundle) {
-  if (bundle?.useLegacyArchitectFlowExporter === true) {
-    return '  use_legacy_architect_flow_exporter = true\n';
-  }
-
-  return '  use_legacy_architect_flow_exporter = false\n';
-}
-
 function buildTfExportTemplate(bundle, mode = TF_EXPORT_MODE_EXPORT) {
   const includeFilterResources = bundle?.includeFilterResources || [];
   const replaceWithDatasource = bundle?.replaceWithDatasource || [];
@@ -62,7 +54,7 @@ ${formatTerraformResourceList(replaceWithDatasource)}
 
   const legacyArchitectFlowExporterLine = isExportState
     ? '  use_legacy_architect_flow_exporter = true\n'
-    : getLegacyArchitectFlowExporterLine(bundle);
+    : '  use_legacy_architect_flow_exporter = false\n';
 
   return `resource "genesyscloud_tf_export" "${tfExportResourceName}" {
   directory                          = "./genesyscloud"

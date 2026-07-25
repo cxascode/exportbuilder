@@ -1,14 +1,6 @@
 import { getFirstLevelDependencies, getBundleResources, getTfExportResourceName } from './resourceModel.js';
 import { buildPasteModeModel, parseIncludeFilterResourcesText } from './includeFilterParser.js';
 
-const FLOW_RESOURCE_TYPE = 'genesyscloud_flow';
-
-function getLegacyArchitectFlowExporter(selectedResources, firstLevelDependencies) {
-  if (selectedResources.includes(FLOW_RESOURCE_TYPE)) return false;
-  if (firstLevelDependencies.includes(FLOW_RESOURCE_TYPE)) return true;
-  return false;
-}
-
 function uniqueSorted(values) {
   return [...new Set(values)].sort();
 }
@@ -34,7 +26,6 @@ function buildCatalogBundleModel(bundle, dependencyMap, bundleIndex) {
     firstLevelDependencies,
     includeFilterResources,
     replaceWithDatasource: getReplaceWithDatasource(firstLevelDependencies),
-    useLegacyArchitectFlowExporter: getLegacyArchitectFlowExporter(selectedResources, firstLevelDependencies),
   };
 }
 
@@ -54,10 +45,6 @@ function buildPasteBundleModel(bundle, dependencyMap, bundleIndex) {
     firstLevelDependencies: pasteModel.firstLevelDependencies,
     includeFilterResources: pasteModel.includeFilterResources,
     replaceWithDatasource: pasteModel.replaceWithDatasource,
-    useLegacyArchitectFlowExporter: getLegacyArchitectFlowExporter(
-      pasteModel.primaryResourceTypes,
-      pasteModel.firstLevelDependencies,
-    ),
   };
 }
 
