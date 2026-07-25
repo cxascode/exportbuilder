@@ -20,6 +20,7 @@ import {
   readPermalinkResource,
   setPermalinkResource,
 } from './lib/permalink.js';
+import { applyPageSeo } from './pageSeo.js';
 import {
   buildDependencyTreeUrl,
   buildDependencyTreeVersionOptionsFromIndex,
@@ -133,6 +134,19 @@ export default function App() {
 
     clearPermalinkResource();
   }, [exports]);
+
+  useEffect(() => {
+    applyPageSeo(readPermalinkResource());
+  }, [exports]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      applyPageSeo(readPermalinkResource());
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   useEffect(() => {
     const el = versionDropdownRef.current;
@@ -665,9 +679,23 @@ export default function App() {
           </div>
 
           <div className="input-toolbar">
-            <div className="gcSegmentedControl" role="group" aria-label="Input mode">
-              <button type="button" className={selectedExportMode === 'catalog' ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'} aria-checked={selectedExportMode === 'catalog'} onClick={() => setSelectedExportMode('catalog')}>Catalog</button>
-              <button type="button" className={selectedExportMode === 'paste' ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'} aria-checked={selectedExportMode === 'paste'} onClick={() => setSelectedExportMode('paste')}>Paste</button>
+            <div className="gcSegmentedControl gcSegmentedControl--text" role="group" aria-label="Input mode">
+              <button
+                type="button"
+                className="gcSegmentedControl__option"
+                aria-checked={selectedExportMode === 'catalog'}
+                onClick={() => setSelectedExportMode('catalog')}
+              >
+                Catalog
+              </button>
+              <button
+                type="button"
+                className="gcSegmentedControl__option"
+                aria-checked={selectedExportMode === 'paste'}
+                onClick={() => setSelectedExportMode('paste')}
+              >
+                Paste
+              </button>
             </div>
             {selectedExportMode === 'catalog' && <div className="search">
               <input
@@ -756,10 +784,14 @@ export default function App() {
             <div className="generated-file-header">
               <div className="generated-file-header__start">
                 <h3>main.tf</h3>
-                <div className="gcSegmentedControl" role="radiogroup" aria-label="Export template mode">
+                <div
+                  className="gcSegmentedControl gcSegmentedControl--text"
+                  role="radiogroup"
+                  aria-label="Export template mode"
+                >
                   <button
                     type="button"
-                    className={tfExportMode === TF_EXPORT_MODE_EXPORT ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'}
+                    className="gcSegmentedControl__option"
                     role="radio"
                     aria-checked={tfExportMode === TF_EXPORT_MODE_EXPORT}
                     onClick={() => setTfExportMode(TF_EXPORT_MODE_EXPORT)}
@@ -768,7 +800,7 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    className={tfExportMode === TF_EXPORT_MODE_EXPORT_STATE ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'}
+                    className="gcSegmentedControl__option"
                     role="radio"
                     aria-checked={tfExportMode === TF_EXPORT_MODE_EXPORT_STATE}
                     onClick={() => setTfExportMode(TF_EXPORT_MODE_EXPORT_STATE)}
