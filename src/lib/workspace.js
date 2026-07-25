@@ -1,4 +1,4 @@
-import { CORE_BUNDLE_NAME, getTfExportResourceName } from './resourceModel.js';
+import { getTfExportResourceName } from './resourceModel.js';
 import { parsePastedResourceTypes } from './includeFilterParser.js';
 
 export const WORKSPACE_SCHEMA = 'cxascode-exportbuilder';
@@ -33,13 +33,13 @@ export function buildWorkspace({ bundles, model }) {
     schema: WORKSPACE_SCHEMA,
     version: WORKSPACE_VERSION,
     exportedAt: new Date().toISOString(),
-    bundles: bundles.map((bundle, bundleIndex) => {
+    bundles: bundles.map(bundle => {
       const generatedBundle = model?.bundles?.find(item => item.name === bundle.name);
       const selectedResources = getExportedSelectedResources(bundle, generatedBundle);
 
       return {
         name: bundle.name,
-        tfExportResourceName: generatedBundle?.tfExportResourceName || getTfExportResourceName(bundleIndex, bundle.name),
+        tfExportResourceName: generatedBundle?.tfExportResourceName || getTfExportResourceName(bundle.name),
         selectedResources,
         firstLevelDependencies: generatedBundle?.firstLevelDependencies || [],
         includeFilterResources: generatedBundle?.includeFilterResources || [],
@@ -89,11 +89,5 @@ export function parseWorkspace({ rawText, knownResources, sanitizeBundleName, cr
       return true;
     });
 
-  return { bundles: applyCoreBundleName(bundles) };
-}
-
-function applyCoreBundleName(bundles) {
-  if (bundles.length === 0 || bundles[0].name === CORE_BUNDLE_NAME) return bundles;
-
-  return [{ ...bundles[0], name: CORE_BUNDLE_NAME }, ...bundles.slice(1)];
+  return { bundles };
 }

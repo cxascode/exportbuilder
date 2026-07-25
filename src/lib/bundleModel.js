@@ -9,7 +9,7 @@ function getReplaceWithDatasource(resources) {
   return uniqueSorted(resources).map(resource => `${resource}::.*`);
 }
 
-function buildCatalogBundleModel(bundle, dependencyMap, bundleIndex) {
+function buildCatalogBundleModel(bundle, dependencyMap) {
   const selectedResources = getBundleResources(bundle).sort();
   const firstLevelDependencies = getFirstLevelDependencies({
     selectedResources,
@@ -20,7 +20,7 @@ function buildCatalogBundleModel(bundle, dependencyMap, bundleIndex) {
   return {
     name: bundle.name,
     mode: 'catalog',
-    tfExportResourceName: getTfExportResourceName(bundleIndex, bundle.name),
+    tfExportResourceName: getTfExportResourceName(bundle.name),
     selectedResources,
     primaryResourceTypes: selectedResources,
     firstLevelDependencies,
@@ -29,7 +29,7 @@ function buildCatalogBundleModel(bundle, dependencyMap, bundleIndex) {
   };
 }
 
-function buildPasteBundleModel(bundle, dependencyMap, bundleIndex) {
+function buildPasteBundleModel(bundle, dependencyMap) {
   const filterEntries = parseIncludeFilterResourcesText(bundle.pastedIncludeFilterResources);
   const pasteModel = buildPasteModeModel({
     filterEntries,
@@ -39,7 +39,7 @@ function buildPasteBundleModel(bundle, dependencyMap, bundleIndex) {
   return {
     name: bundle.name,
     mode: 'paste',
-    tfExportResourceName: getTfExportResourceName(bundleIndex, bundle.name),
+    tfExportResourceName: getTfExportResourceName(bundle.name),
     selectedResources: pasteModel.primaryResourceTypes,
     primaryResourceTypes: pasteModel.primaryResourceTypes,
     firstLevelDependencies: pasteModel.firstLevelDependencies,
@@ -54,12 +54,12 @@ export function buildBundleModel({
   stats,
   validation,
 }) {
-  const bundleModels = bundles.map((bundle, bundleIndex) => {
+  const bundleModels = bundles.map(bundle => {
     if (bundle.mode === 'paste') {
-      return buildPasteBundleModel(bundle, dependencyMap, bundleIndex);
+      return buildPasteBundleModel(bundle, dependencyMap);
     }
 
-    return buildCatalogBundleModel(bundle, dependencyMap, bundleIndex);
+    return buildCatalogBundleModel(bundle, dependencyMap);
   });
 
   return {

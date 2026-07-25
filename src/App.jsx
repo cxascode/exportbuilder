@@ -89,6 +89,8 @@ export default function App() {
   const [selectedBundleId, setSelectedBundleId] = useState(initialState.selectedBundleId);
   const [newBundleName, setNewBundleName] = useState('');
   const [isAddingBundle, setIsAddingBundle] = useState(false);
+  const [renamingBundleId, setRenamingBundleId] = useState(null);
+  const [renameBundleName, setRenameBundleName] = useState('');
   const [resourceDialogType, setResourceDialogType] = useState(null);
   const [query, setQuery] = useState('');
   const [selectedQuery, setSelectedQuery] = useState('');
@@ -299,6 +301,7 @@ export default function App() {
   }, [model.bundles, tfExportMode]);
 
   function startAddingBundle() {
+    cancelRenamingBundle();
     setNewBundleName('');
     setQuery('');
     setIsAddingBundle(true);
@@ -309,10 +312,34 @@ export default function App() {
     setIsAddingBundle(false);
   }
 
+  function startRenamingBundle(bundle) {
+    setIsAddingBundle(false);
+    setRenamingBundleId(bundle.id);
+    setRenameBundleName(bundle.name);
+  }
+
+  function cancelRenamingBundle() {
+    setRenamingBundleId(null);
+    setRenameBundleName('');
+  }
+
+  function saveRenamedBundle() {
+    if (!renamingBundleId) return;
+
+    const name = sanitizeBundleName(renameBundleName);
+
+    if (!name || bundles.some(bundle => bundle.id !== renamingBundleId && bundle.name === name)) return;
+
+    setBundles(current => current.map(bundle => (
+      bundle.id === renamingBundleId ? { ...bundle, name } : bundle
+    )));
+    cancelRenamingBundle();
+  }
+
   function addBundle() {
     const name = sanitizeBundleName(newBundleName);
 
-    if (!name || name === CORE_BUNDLE_NAME || bundles.some(bundle => bundle.name === name)) return;
+    if (!name || bundles.some(bundle => bundle.name === name)) return;
 
     const bundle = buildDefaultBundle();
     bundle.name = name;
@@ -329,10 +356,6 @@ export default function App() {
       if (current.length <= 1) return current;
 
       const next = current.filter(bundle => bundle.id !== id);
-
-      if (next.length > 0 && next[0].name !== CORE_BUNDLE_NAME) {
-        next[0] = { ...next[0], name: CORE_BUNDLE_NAME };
-      }
 
       setSelectedBundleId(next[0]?.id || null);
       setQuery('');
@@ -406,6 +429,7 @@ export default function App() {
     setSelectedBundleId(defaultBundle.id);
     setNewBundleName('');
     setIsAddingBundle(false);
+    cancelRenamingBundle();
     setResourceDialogType(null);
     setQuery('');
   }
@@ -524,21 +548,58 @@ export default function App() {
           </div>
         </div>}
         <div className="bundle-list">
-          {bundles.map(bundle => <button type="button" key={bundle.id} className={bundle.id === selectedBundleId ? 'bundle selected' : 'bundle'} onClick={() => { setSelectedBundleId(bundle.id); setQuery(''); setSelectedQuery(''); }}>
-            <span>
-              <strong>{bundle.name}</strong>
-              <small>{getBundleResourceCount(bundle)} {bundle.mode === 'paste' ? 'pasted' : 'selected'}</small>
-            </span>
-            {bundles.length > 1 && (
-              <button
-                type="button"
-                className="gcClearButton danger"
-                onClick={event => { event.stopPropagation(); deleteBundle(bundle.id); }}
-              >
-                delete
-              </button>
-            )}
-          </button>)}
+          {bundles.map(bundle => {
+            if (renamingBundleId === bundle.id) {
+              return <div key={bundle.id} className="field add-bundle-form bundle-rename-form">
+                <label htmlFor={`rename-bundle-${bundle.id}`}>Rename bundle</label>
+                <div className="inline">
+                  <input
+                    id={`rename-bundle-${bundle.id}`}
+                    value={renameBundleName}
+                    onChange={event => setRenameBundleName(event.target.value)}
+                    placeholder="letters, numbers, _, and -"
+                  />
+                  <button type="button" className="gcHeaderLink" onClick={saveRenamedBundle}>Save</button>
+                  <button type="button" className="gcClearButton" onClick={cancelRenamingBundle}>Cancel</button>
+                </div>
+              </div>;
+            }
+
+            return <button
+              type="button"
+              key={bundle.id}
+              className={bundle.id === selectedBundleId ? 'bundle selected' : 'bundle'}
+              onClick={() => {
+                cancelRenamingBundle();
+                setSelectedBundleId(bundle.id);
+                setQuery('');
+                setSelectedQuery('');
+              }}
+            >
+              <span>
+                <strong>{bundle.name}</strong>
+                <small>{getBundleResourceCount(bundle)} {bundle.mode === 'paste' ? 'pasted' : 'selected'}</small>
+              </span>
+              <div className="bundle-actions">
+                <button
+                  type="button"
+                  className="gcHeaderLink"
+                  onClick={event => { event.stopPropagation(); startRenamingBundle(bundle); }}
+                >
+                  rename
+                </button>
+                {bundles.length > 1 && (
+                  <button
+                    type="button"
+                    className="gcClearButton danger"
+                    onClick={event => { event.stopPropagation(); deleteBundle(bundle.id); }}
+                  >
+                    delete
+                  </button>
+                )}
+              </div>
+            </button>;
+          })}
         </div>
       </section>
 

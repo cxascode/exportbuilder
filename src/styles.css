@@ -488,6 +488,17 @@ textarea:focus-visible,
   color: #b91c1c;
 }
 
+.bundle-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bundle-rename-form {
+  min-width: min(100%, 420px);
+}
+
 .danger { color: #b91c1c; }
 
 .grid {

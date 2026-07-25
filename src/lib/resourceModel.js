@@ -24,10 +24,8 @@ export function sanitizeBundleName(value) {
 
 export const CORE_BUNDLE_NAME = 'tf_export';
 
-export function getTfExportResourceName(bundleIndex, bundleName) {
-  if (bundleIndex === 0) return CORE_BUNDLE_NAME;
-
-  return sanitizeBundleName(bundleName);
+export function getTfExportResourceName(bundleName) {
+  return sanitizeBundleName(bundleName) || CORE_BUNDLE_NAME;
 }
 
 export function getAssignedResources(bundles) {
