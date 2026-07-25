@@ -36,14 +36,14 @@ export function parsePastedResourceTypes(text) {
   )].sort();
 }
 
-export function getBundleResourceCount(bundle) {
-  if (!bundle) return 0;
+export function getExportResourceCount(exportItem) {
+  if (!exportItem) return 0;
 
-  if (bundle.mode === 'paste') {
-    return parsePastedResourceTypes(bundle.pastedIncludeFilterResources).length;
+  if (exportItem.mode === 'paste') {
+    return parsePastedResourceTypes(exportItem.pastedIncludeFilterResources).length;
   }
 
-  return Array.isArray(bundle.selectedResources) ? bundle.selectedResources.length : 0;
+  return Array.isArray(exportItem.selectedResources) ? exportItem.selectedResources.length : 0;
 }
 
 export function buildPasteModeModel({

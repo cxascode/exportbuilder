@@ -1,4 +1,4 @@
-import { getFirstLevelDependencies, getBundleResources, getTfExportResourceName } from './resourceModel.js';
+import { getFirstLevelDependencies, getExportResources, getTfExportResourceName } from './resourceModel.js';
 import { buildPasteModeModel, parseIncludeFilterResourcesText } from './includeFilterParser.js';
 
 function uniqueSorted(values) {
@@ -9,8 +9,8 @@ function getReplaceWithDatasource(resources) {
   return uniqueSorted(resources).map(resource => `${resource}::.*`);
 }
 
-function buildCatalogBundleModel(bundle, dependencyMap) {
-  const selectedResources = getBundleResources(bundle).sort();
+function buildCatalogExportModel(exportItem, dependencyMap) {
+  const selectedResources = getExportResources(exportItem).sort();
   const firstLevelDependencies = getFirstLevelDependencies({
     selectedResources,
     dependencyMap,
@@ -18,9 +18,9 @@ function buildCatalogBundleModel(bundle, dependencyMap) {
   const includeFilterResources = selectedResources;
 
   return {
-    name: bundle.name,
+    name: exportItem.name,
     mode: 'catalog',
-    tfExportResourceName: getTfExportResourceName(bundle.name),
+    tfExportResourceName: getTfExportResourceName(exportItem.name),
     selectedResources,
     primaryResourceTypes: selectedResources,
     firstLevelDependencies,
@@ -29,17 +29,17 @@ function buildCatalogBundleModel(bundle, dependencyMap) {
   };
 }
 
-function buildPasteBundleModel(bundle, dependencyMap) {
-  const filterEntries = parseIncludeFilterResourcesText(bundle.pastedIncludeFilterResources);
+function buildPasteExportModel(exportItem, dependencyMap) {
+  const filterEntries = parseIncludeFilterResourcesText(exportItem.pastedIncludeFilterResources);
   const pasteModel = buildPasteModeModel({
     filterEntries,
     dependencyMap,
   });
 
   return {
-    name: bundle.name,
+    name: exportItem.name,
     mode: 'paste',
-    tfExportResourceName: getTfExportResourceName(bundle.name),
+    tfExportResourceName: getTfExportResourceName(exportItem.name),
     selectedResources: pasteModel.primaryResourceTypes,
     primaryResourceTypes: pasteModel.primaryResourceTypes,
     firstLevelDependencies: pasteModel.firstLevelDependencies,
@@ -48,18 +48,18 @@ function buildPasteBundleModel(bundle, dependencyMap) {
   };
 }
 
-export function buildBundleModel({
+export function buildExportModel({
   dependencyMap = new Map(),
-  bundles,
+  exports: exportItems,
   stats,
   validation,
 }) {
-  const bundleModels = bundles.map(bundle => {
-    if (bundle.mode === 'paste') {
-      return buildPasteBundleModel(bundle, dependencyMap);
+  const exportModels = exportItems.map(exportItem => {
+    if (exportItem.mode === 'paste') {
+      return buildPasteExportModel(exportItem, dependencyMap);
     }
 
-    return buildCatalogBundleModel(bundle, dependencyMap);
+    return buildCatalogExportModel(exportItem, dependencyMap);
   });
 
   return {
@@ -67,12 +67,12 @@ export function buildBundleModel({
       knownResourceTypes: stats.knownResourceCount,
       selectedResources: stats.selectedResourceCount,
       availableResources: stats.availableResourceCount,
-      bundleCount: bundles.length,
+      exportCount: exportItems.length,
     },
-    bundles: bundleModels,
+    exports: exportModels,
     rawValidation: {
       ...validation,
-      startup: bundles.length === 0,
+      startup: exportItems.length === 0,
     },
   };
 }

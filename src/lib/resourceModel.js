@@ -6,7 +6,7 @@ export function cleanName(value) {
     .replace(/^-+|-+$/g, '');
 }
 
-export function sanitizeBundleName(value) {
+export function sanitizeExportName(value) {
   const sanitized = String(value || '')
     .trim()
     .replace(/[^a-zA-Z0-9_-]+/g, '_')
@@ -22,14 +22,14 @@ export function sanitizeBundleName(value) {
   return sanitized;
 }
 
-export const CORE_BUNDLE_NAME = 'tf_export';
+export const CORE_EXPORT_NAME = 'tf_export';
 
-export function getTfExportResourceName(bundleName) {
-  return sanitizeBundleName(bundleName) || CORE_BUNDLE_NAME;
+export function getTfExportResourceName(exportName) {
+  return sanitizeExportName(exportName) || CORE_EXPORT_NAME;
 }
 
-export function getAssignedResources(bundles) {
-  return new Map(bundles.flatMap(bundle => getBundleResources(bundle).map(resource => [resource, bundle.name])));
+export function getAssignedResources(exports) {
+  return new Map(exports.flatMap(exportItem => getExportResources(exportItem).map(resource => [resource, exportItem.name])));
 }
 
 export function getFirstLevelDependencies({ selectedResources, dependencyMap }) {
@@ -47,30 +47,30 @@ export function getFirstLevelDependencies({ selectedResources, dependencyMap }) 
   return [...dependencies].sort();
 }
 
-export function getBundleResources(bundle) {
-  if (!bundle) return [];
-  return Array.isArray(bundle.selectedResources) ? bundle.selectedResources : [];
+export function getExportResources(exportItem) {
+  if (!exportItem) return [];
+  return Array.isArray(exportItem.selectedResources) ? exportItem.selectedResources : [];
 }
 
-export function getAvailableBundleResources({ resources, assigned, query }) {
+export function getAvailableExportResources({ resources, assigned, query }) {
   return resources
     .filter(resource => !assigned.has(resource))
     .filter(resource => resource.includes(query));
 }
 
-export function getBundleStats({ resources, bundles, assigned }) {
+export function getExportStats({ resources, exports, assigned }) {
   return {
     knownResourceCount: resources.length,
-    selectedResourceCount: bundles.reduce((total, bundle) => total + getBundleResources(bundle).length, 0),
+    selectedResourceCount: exports.reduce((total, exportItem) => total + getExportResources(exportItem).length, 0),
     availableResourceCount: resources.filter(resource => !assigned.has(resource)).length,
   };
 }
 
-export function validateBundles({ bundles }) {
+export function validateExports({ exports }) {
   const assignmentCounts = new Map();
 
-  bundles.forEach(bundle => {
-    getBundleResources(bundle).forEach(resource => {
+  exports.forEach(exportItem => {
+    getExportResources(exportItem).forEach(resource => {
       assignmentCounts.set(resource, (assignmentCounts.get(resource) || 0) + 1);
     });
   });

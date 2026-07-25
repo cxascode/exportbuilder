@@ -2,9 +2,9 @@
 
 **Live app:** [https://cxascode.github.io/exportbuilder/](https://cxascode.github.io/exportbuilder/)
 
-Bundle pipeline exports without hand-maintaining dependency wiring.
+Create exports without hand-maintaining dependency wiring.
 
-Export Builder is a small React app built on **Genesys Spark** (`gux-*` components) that produces a ready-to-wear `genesyscloud_tf_export` block for CX as Code pipelines. It seeds `include_filter_resources`, suggests `replace_with_datasource` patterns from the Genesys Cloud dependency tree, and sets the cxascode-friendly defaults (`enable_dependency_resolution`, HCL export, and related settings). You tailor the rest — named regex filters, org-specific replace patterns, and anything beyond the starter.
+Export Builder is a small React app built on **Genesys Spark** (`gux-*` components) that produces `genesyscloud_tf_export` blocks for CX as Code pipelines. It seeds `include_filter_resources`, suggests `replace_with_datasource` patterns from the Genesys Cloud dependency tree, and sets the cxascode-friendly defaults (`enable_dependency_resolution`, HCL export, and related settings). You tailor the rest — named regex filters, org-specific replace patterns, and anything beyond the starter.
 
 ## Why Export Builder?
 
@@ -26,7 +26,7 @@ Pick resource types from the live Genesys Cloud dependency catalog (with a bundl
 - Derives first-level dependencies and suggests `replace_with_datasource` entries as `type::.*` for those dependencies
 - Sets `use_legacy_architect_flow_exporter` to `false` for export mode and `true` for exportstate mode (matching [CX as Code Explorer](https://cxascode.github.io/) templates)
 
-Catalog mode also tracks which types are assigned across bundles so you do not double-assign the same resource type.
+Catalog mode also tracks which types are assigned across exports so you do not double-assign the same resource type.
 
 ### Paste
 
@@ -59,7 +59,7 @@ Copy the generated block from the app, drop it into your cxascode repo, and adju
 
 ## Workspace files
 
-Export and import `exportbuilder-workspace.json` to save bundles, switch between catalog versions, and share work with others before committing Terraform.
+Export and import `exportbuilder-workspace.json` to save exports, switch between catalog versions, and share work with others before committing Terraform.
 
 ## Run locally
 

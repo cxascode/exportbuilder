@@ -195,6 +195,16 @@ code, pre, .gcMono {
   cursor: not-allowed;
 }
 
+.gcClearButton.destructive {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.gcClearButton.destructive:hover:not(:disabled),
+.gcClearButton.destructive:focus-visible:not(:disabled) {
+  background: #fef2f2;
+}
+
 .gcCopyButton {
   display: inline-flex;
   align-items: center;
@@ -323,7 +333,7 @@ code, pre, .gcMono {
   min-width: 0;
 }
 
-.bundle-nav {
+.export-nav {
   margin-bottom: 16px;
   padding: 14px;
 }
@@ -369,7 +379,7 @@ h2 {
   font-weight: 700;
 }
 
-.bundle-nav-actions {
+.export-nav-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -416,24 +426,24 @@ textarea:focus-visible,
   outline-offset: 1px;
 }
 
-.add-bundle-form {
+.add-export-form {
   margin-bottom: 12px;
   max-width: 720px;
 }
 
-.add-bundle-form .inline {
+.add-export-form .inline {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) auto auto;
   align-items: center;
 }
 
-.bundle-list {
+.export-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.bundle {
+.export {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -448,16 +458,16 @@ textarea:focus-visible,
   text-align: left;
 }
 
-.bundle:hover {
+.export:hover {
   background: rgba(0, 0, 0, 0.03);
 }
 
-.bundle.selected {
+.export.selected {
   background: var(--gc-blue-weak);
   border-color: var(--gc-blue);
 }
 
-.bundle span {
+.export span {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -465,41 +475,39 @@ textarea:focus-visible,
   overflow: hidden;
 }
 
-.bundle strong,
-.bundle small {
+.export strong,
+.export small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.bundle strong {
+.export strong {
   font-size: 13px;
   font-weight: 600;
 }
 
-.bundle small {
+.export small {
   color: var(--gc-subtle);
   font-size: 11px;
   font-weight: 600;
 }
 
-.bundle .gcClearButton.danger {
+.export .actions {
   flex-shrink: 0;
-  color: #b91c1c;
+  gap: 4px;
 }
 
-.bundle-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+.export .actions .gcHeaderLink,
+.export .actions .gcClearButton {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
 }
 
-.bundle-rename-form {
+.export-rename-form {
   min-width: min(100%, 420px);
 }
-
-.danger { color: #b91c1c; }
 
 .grid {
   display: grid;
@@ -830,8 +838,8 @@ pre {
   .output-panel--paste { grid-column: auto; }
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .inline { flex-direction: column; align-items: stretch; }
-  .add-bundle-form .inline { grid-template-columns: 1fr; }
-  .bundle { width: 100%; max-width: none; }
+  .add-export-form .inline { grid-template-columns: 1fr; }
+  .export { width: 100%; max-width: none; }
   .gcPageTitleRow { flex-direction: column; }
   .gcPageMeta { justify-content: flex-start; }
 }

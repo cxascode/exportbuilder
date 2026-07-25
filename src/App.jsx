@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import resources from './data/resources.json';
 import { buildFallbackCatalog, parseResourceCatalog } from './lib/resourceCatalog.js';
-import { buildBundleModel } from './lib/bundleModel.js';
+import { buildExportModel } from './lib/exportModel.js';
 import {
   getAssignedResources,
-  getAvailableBundleResources,
-  getBundleResources,
-  getBundleStats,
-  sanitizeBundleName,
-  CORE_BUNDLE_NAME,
-  validateBundles,
+  getAvailableExportResources,
+  getExportResources,
+  getExportStats,
+  sanitizeExportName,
+  CORE_EXPORT_NAME,
+  validateExports,
 } from './lib/resourceModel.js';
 import { buildWorkspace, downloadJsonFile, parseWorkspace } from './lib/workspace.js';
-import { getBundleResourceCount, parsePastedResourceTypes } from './lib/includeFilterParser.js';
+import { getExportResourceCount, parsePastedResourceTypes } from './lib/includeFilterParser.js';
 import {
   buildDependencyTreeUrl,
   buildDependencyTreeVersionOptionsFromIndex,
@@ -32,10 +32,10 @@ function formatTerraformResourceList(values) {
   return values.map(value => `    "${value}"`).join(',\n');
 }
 
-function buildTfExportTemplate(bundle, mode = TF_EXPORT_MODE_EXPORT) {
-  const includeFilterResources = bundle?.includeFilterResources || [];
-  const replaceWithDatasource = bundle?.replaceWithDatasource || [];
-  const tfExportResourceName = bundle?.tfExportResourceName || 'tf_export';
+function buildTfExportTemplate(exportItem, mode = TF_EXPORT_MODE_EXPORT) {
+  const includeFilterResources = exportItem?.includeFilterResources || [];
+  const replaceWithDatasource = exportItem?.replaceWithDatasource || [];
+  const tfExportResourceName = exportItem?.tfExportResourceName || 'tf_export';
   const isExportState = mode === TF_EXPORT_MODE_EXPORT_STATE;
 
   const includeFilterBlock = includeFilterResources.length === 0
@@ -67,10 +67,10 @@ ${replaceWithDatasourceBlock}  split_files_by_resource            = false
 ${legacyArchitectFlowExporterLine}}`;
 }
 
-function buildDefaultBundle() {
+function buildDefaultExport() {
   return {
     id: crypto.randomUUID(),
-    name: CORE_BUNDLE_NAME,
+    name: CORE_EXPORT_NAME,
     mode: 'catalog',
     selectedResources: [],
     pastedIncludeFilterResources: '',
@@ -79,18 +79,18 @@ function buildDefaultBundle() {
 
 export default function App() {
   const initialState = useMemo(() => {
-    const bundle = buildDefaultBundle();
-    return { bundles: [bundle], selectedBundleId: bundle.id };
+    const exportItem = buildDefaultExport();
+    return { exports: [exportItem], selectedExportId: exportItem.id };
   }, []);
   const [resourceCatalog, setResourceCatalog] = useState(BUNDLED_RESOURCE_CATALOG);
   const [selectedCatalogVersion, setSelectedCatalogVersion] = useState(LATEST_DEPENDENCY_TREE_VERSION);
   const [catalogVersionOptions, setCatalogVersionOptions] = useState(() => getCachedDependencyTreeVersionOptions() || [LATEST_DEPENDENCY_TREE_VERSION]);
-  const [bundles, setBundles] = useState(initialState.bundles);
-  const [selectedBundleId, setSelectedBundleId] = useState(initialState.selectedBundleId);
-  const [newBundleName, setNewBundleName] = useState('');
-  const [isAddingBundle, setIsAddingBundle] = useState(false);
-  const [renamingBundleId, setRenamingBundleId] = useState(null);
-  const [renameBundleName, setRenameBundleName] = useState('');
+  const [exports, setExports] = useState(initialState.exports);
+  const [selectedExportId, setSelectedExportId] = useState(initialState.selectedExportId);
+  const [newExportName, setNewExportName] = useState('');
+  const [isAddingExport, setIsAddingExport] = useState(false);
+  const [renamingExportId, setRenamingExportId] = useState(null);
+  const [renameExportName, setRenameExportName] = useState('');
   const [resourceDialogType, setResourceDialogType] = useState(null);
   const [query, setQuery] = useState('');
   const [selectedQuery, setSelectedQuery] = useState('');
@@ -189,9 +189,9 @@ export default function App() {
         const knownResourceSet = new Set(catalog.resourceTypes);
 
         setResourceCatalog(catalog);
-        setBundles(current => current.map(bundle => ({
-          ...bundle,
-          selectedResources: getBundleResources(bundle).filter(resource => knownResourceSet.has(resource)),
+        setExports(current => current.map(exportItem => ({
+          ...exportItem,
+          selectedResources: getExportResources(exportItem).filter(resource => knownResourceSet.has(resource)),
         })));
       } catch (error) {
         if (error.name === 'AbortError') return;
@@ -204,19 +204,19 @@ export default function App() {
     return () => controller.abort();
   }, [selectedCatalogVersion]);
 
-  const selectedBundle = bundles.find(bundle => bundle.id === selectedBundleId) || bundles[0] || buildDefaultBundle();
-  const selectedBundleMode = selectedBundle.mode === 'paste' ? 'paste' : 'catalog';
-  const catalogBundles = useMemo(() => bundles.filter(bundle => bundle.mode !== 'paste'), [bundles]);
-  const selectedBundleResources = getBundleResources(selectedBundle);
-  const filteredSelectedBundleResources = selectedBundleResources.filter(resource => resource.includes(selectedQuery));
-  const selectedResources = useMemo(() => [...new Set(catalogBundles.flatMap(bundle => getBundleResources(bundle)))].sort(), [catalogBundles]);
-  const assigned = useMemo(() => getAssignedResources(catalogBundles), [catalogBundles]);
+  const selectedExport = exports.find(exportItem => exportItem.id === selectedExportId) || exports[0] || buildDefaultExport();
+  const selectedExportMode = selectedExport.mode === 'paste' ? 'paste' : 'catalog';
+  const catalogExports = useMemo(() => exports.filter(exportItem => exportItem.mode !== 'paste'), [exports]);
+  const selectedExportResources = getExportResources(selectedExport);
+  const filteredSelectedExportResources = selectedExportResources.filter(resource => resource.includes(selectedQuery));
+  const selectedResources = useMemo(() => [...new Set(catalogExports.flatMap(exportItem => getExportResources(exportItem)))].sort(), [catalogExports]);
+  const assigned = useMemo(() => getAssignedResources(catalogExports), [catalogExports]);
   const parsedPasteResourceTypes = useMemo(() => {
-    return parsePastedResourceTypes(selectedBundle.pastedIncludeFilterResources);
-  }, [selectedBundle.pastedIncludeFilterResources]);
+    return parsePastedResourceTypes(selectedExport.pastedIncludeFilterResources);
+  }, [selectedExport.pastedIncludeFilterResources]);
 
   const unassignedResources = useMemo(() => {
-    return getAvailableBundleResources({
+    return getAvailableExportResources({
       resources: allResources,
       assigned,
       query: '',
@@ -224,34 +224,34 @@ export default function App() {
   }, [assigned, allResources]);
 
   const availableResources = useMemo(() => {
-    const selectedSet = new Set(selectedBundleResources);
+    const selectedSet = new Set(selectedExportResources);
 
-    return getAvailableBundleResources({
+    return getAvailableExportResources({
       resources: allResources,
       assigned,
       query,
     }).filter(resource => !selectedSet.has(resource));
-  }, [assigned, query, allResources, selectedBundleResources]);
+  }, [assigned, query, allResources, selectedExportResources]);
 
   const stats = useMemo(() => {
-    const catalogStats = getBundleStats({
+    const catalogStats = getExportStats({
       resources: allResources,
-      bundles: catalogBundles,
+      exports: catalogExports,
       assigned,
     });
-    const pasteSelectedCount = bundles
-      .filter(bundle => bundle.mode === 'paste')
-      .reduce((total, bundle) => total + getBundleResourceCount(bundle), 0);
+    const pasteSelectedCount = exports
+      .filter(exportItem => exportItem.mode === 'paste')
+      .reduce((total, exportItem) => total + getExportResourceCount(exportItem), 0);
 
     return {
       ...catalogStats,
       selectedResourceCount: catalogStats.selectedResourceCount + pasteSelectedCount,
     };
-  }, [assigned, bundles, catalogBundles, allResources]);
+  }, [assigned, exports, catalogExports, allResources]);
 
   const validation = useMemo(() => {
-    return validateBundles({ bundles: catalogBundles });
-  }, [catalogBundles, allResources]);
+    return validateExports({ exports: catalogExports });
+  }, [catalogExports, allResources]);
 
   const resourceDialog = useMemo(() => {
     if (resourceDialogType === 'known') {
@@ -265,7 +265,7 @@ export default function App() {
     if (resourceDialogType === 'selected') {
       return {
         title: 'Selected resources',
-        description: 'Resource types currently assigned across all bundles.',
+        description: 'Resource types currently assigned across all exports.',
         resources: selectedResources,
       };
     }
@@ -273,7 +273,7 @@ export default function App() {
     if (resourceDialogType === 'available') {
       return {
         title: 'Available resources',
-        description: 'Resource types not assigned to any bundle.',
+        description: 'Resource types not assigned to any export.',
         resources: unassignedResources,
       };
     }
@@ -282,164 +282,164 @@ export default function App() {
   }, [allResources, resourceDialogType, selectedResources, unassignedResources]);
 
   const model = useMemo(() => {
-    return buildBundleModel({
+    return buildExportModel({
       dependencyMap: resourceCatalog.dependencyMap,
-      bundles,
+      exports,
       stats,
       validation,
     });
-  }, [bundles, stats, validation, resourceCatalog.dependencyMap]);
+  }, [exports, stats, validation, resourceCatalog.dependencyMap]);
 
-  const selectedGeneratedBundle = useMemo(() => {
-    return model.bundles.find(bundle => bundle.name === selectedBundle.name) || model.bundles[0] || null;
-  }, [model.bundles, selectedBundle.name]);
+  const selectedGeneratedExport = useMemo(() => {
+    return model.exports.find(item => item.name === selectedExport.name) || model.exports[0] || null;
+  }, [model.exports, selectedExport.name]);
 
   const mainTfTemplate = useMemo(() => {
-    return model.bundles
-      .map(bundle => buildTfExportTemplate(bundle, tfExportMode))
+    return model.exports
+      .map(exportItem => buildTfExportTemplate(exportItem, tfExportMode))
       .join('\n\n');
-  }, [model.bundles, tfExportMode]);
+  }, [model.exports, tfExportMode]);
 
-  function startAddingBundle() {
-    cancelRenamingBundle();
-    setNewBundleName('');
+  function startAddingExport() {
+    cancelRenamingExport();
+    setNewExportName('');
     setQuery('');
-    setIsAddingBundle(true);
+    setIsAddingExport(true);
   }
 
-  function cancelAddingBundle() {
-    setNewBundleName('');
-    setIsAddingBundle(false);
+  function cancelAddingExport() {
+    setNewExportName('');
+    setIsAddingExport(false);
   }
 
-  function startRenamingBundle(bundle) {
-    setIsAddingBundle(false);
-    setRenamingBundleId(bundle.id);
-    setRenameBundleName(bundle.name);
+  function startRenamingExport(exportItem) {
+    setIsAddingExport(false);
+    setRenamingExportId(exportItem.id);
+    setRenameExportName(exportItem.name);
   }
 
-  function cancelRenamingBundle() {
-    setRenamingBundleId(null);
-    setRenameBundleName('');
+  function cancelRenamingExport() {
+    setRenamingExportId(null);
+    setRenameExportName('');
   }
 
-  function saveRenamedBundle() {
-    if (!renamingBundleId) return;
+  function saveRenamedExport() {
+    if (!renamingExportId) return;
 
-    const name = sanitizeBundleName(renameBundleName);
+    const name = sanitizeExportName(renameExportName);
 
-    if (!name || bundles.some(bundle => bundle.id !== renamingBundleId && bundle.name === name)) return;
+    if (!name || exports.some(exportItem => exportItem.id !== renamingExportId && exportItem.name === name)) return;
 
-    setBundles(current => current.map(bundle => (
-      bundle.id === renamingBundleId ? { ...bundle, name } : bundle
+    setExports(current => current.map(exportItem => (
+      exportItem.id === renamingExportId ? { ...exportItem, name } : exportItem
     )));
-    cancelRenamingBundle();
+    cancelRenamingExport();
   }
 
-  function addBundle() {
-    const name = sanitizeBundleName(newBundleName);
+  function addExport() {
+    const name = sanitizeExportName(newExportName);
 
-    if (!name || bundles.some(bundle => bundle.name === name)) return;
+    if (!name || exports.some(exportItem => exportItem.name === name)) return;
 
-    const bundle = buildDefaultBundle();
-    bundle.name = name;
+    const exportItem = buildDefaultExport();
+    exportItem.name = name;
 
-    setBundles(current => [...current, bundle]);
-    setSelectedBundleId(bundle.id);
-    setNewBundleName('');
+    setExports(current => [...current, exportItem]);
+    setSelectedExportId(exportItem.id);
+    setNewExportName('');
     setQuery('');
-    setIsAddingBundle(false);
+    setIsAddingExport(false);
   }
 
-  function deleteBundle(id) {
-    setBundles(current => {
+  function deleteExport(id) {
+    setExports(current => {
       if (current.length <= 1) return current;
 
-      const next = current.filter(bundle => bundle.id !== id);
+      const next = current.filter(exportItem => exportItem.id !== id);
 
-      setSelectedBundleId(next[0]?.id || null);
+      setSelectedExportId(next[0]?.id || null);
       setQuery('');
       return next;
     });
   }
 
-  function setSelectedBundleMode(mode) {
-    if (!selectedBundleId) return;
+  function setSelectedExportMode(mode) {
+    if (!selectedExportId) return;
 
-    setBundles(current => current.map(bundle => {
-      if (bundle.id !== selectedBundleId) return bundle;
+    setExports(current => current.map(exportItem => {
+      if (exportItem.id !== selectedExportId) return exportItem;
 
-      if (mode === 'paste' && bundle.mode !== 'paste') {
-        const pasted = String(bundle.pastedIncludeFilterResources || '').trim();
-        const seededPaste = pasted || getBundleResources(bundle).join('\n');
+      if (mode === 'paste' && exportItem.mode !== 'paste') {
+        const pasted = String(exportItem.pastedIncludeFilterResources || '').trim();
+        const seededPaste = pasted || getExportResources(exportItem).join('\n');
 
-        return { ...bundle, mode, pastedIncludeFilterResources: seededPaste };
+        return { ...exportItem, mode, pastedIncludeFilterResources: seededPaste };
       }
 
-      if (mode === 'catalog' && bundle.mode === 'paste') {
-        const selected = getBundleResources(bundle);
+      if (mode === 'catalog' && exportItem.mode === 'paste') {
+        const selected = getExportResources(exportItem);
         const knownResourceSet = new Set(allResources);
         const seededSelected = selected.length > 0
           ? selected
-          : parsePastedResourceTypes(bundle.pastedIncludeFilterResources)
+          : parsePastedResourceTypes(exportItem.pastedIncludeFilterResources)
             .filter(resource => knownResourceSet.has(resource));
 
-        return { ...bundle, mode, selectedResources: seededSelected };
+        return { ...exportItem, mode, selectedResources: seededSelected };
       }
 
-      return { ...bundle, mode };
+      return { ...exportItem, mode };
     }));
   }
 
   function updatePastedIncludeFilters(value) {
-    if (!selectedBundleId) return;
+    if (!selectedExportId) return;
 
-    setBundles(current => current.map(bundle => {
-      return bundle.id === selectedBundleId
-        ? { ...bundle, pastedIncludeFilterResources: value }
-        : bundle;
+    setExports(current => current.map(exportItem => {
+      return exportItem.id === selectedExportId
+        ? { ...exportItem, pastedIncludeFilterResources: value }
+        : exportItem;
     }));
   }
 
-  function moveToBundle(resource, bundleId = selectedBundleId) {
-    if (!bundleId) return;
+  function moveToExport(resource, exportId = selectedExportId) {
+    if (!exportId) return;
 
-    setBundles(current => current.map(bundle => {
-      const withoutResource = getBundleResources(bundle).filter(item => item !== resource);
+    setExports(current => current.map(exportItem => {
+      const withoutResource = getExportResources(exportItem).filter(item => item !== resource);
 
-      if (bundle.id === bundleId) {
-        return { ...bundle, selectedResources: [...withoutResource, resource].sort() };
+      if (exportItem.id === exportId) {
+        return { ...exportItem, selectedResources: [...withoutResource, resource].sort() };
       }
 
-      return { ...bundle, selectedResources: withoutResource };
+      return { ...exportItem, selectedResources: withoutResource };
     }));
   }
 
-  function removeFromBundle(resource, bundleId) {
-    setBundles(current => current.map(bundle => {
-      return bundle.id === bundleId
-        ? { ...bundle, selectedResources: getBundleResources(bundle).filter(item => item !== resource) }
-        : bundle;
+  function removeFromExport(resource, exportId) {
+    setExports(current => current.map(exportItem => {
+      return exportItem.id === exportId
+        ? { ...exportItem, selectedResources: getExportResources(exportItem).filter(item => item !== resource) }
+        : exportItem;
     }));
   }
 
   function reset() {
-    const defaultBundle = buildDefaultBundle();
-    setBundles([defaultBundle]);
-    setSelectedBundleId(defaultBundle.id);
-    setNewBundleName('');
-    setIsAddingBundle(false);
-    cancelRenamingBundle();
+    const defaultExport = buildDefaultExport();
+    setExports([defaultExport]);
+    setSelectedExportId(defaultExport.id);
+    setNewExportName('');
+    setIsAddingExport(false);
+    cancelRenamingExport();
     setResourceDialogType(null);
     setQuery('');
   }
 
   function downloadWorkspace() {
-    if (bundles.length === 0) return;
+    if (exports.length === 0) return;
 
     downloadJsonFile({
       filename: 'exportbuilder-workspace.json',
-      data: buildWorkspace({ bundles, model }),
+      data: buildWorkspace({ exports, model }),
     });
   }
 
@@ -456,14 +456,14 @@ export default function App() {
         const workspace = parseWorkspace({
           rawText: String(reader.result || '{}'),
           knownResources: allResources,
-          sanitizeBundleName,
+          sanitizeExportName,
           createId: () => crypto.randomUUID(),
         });
 
-        setBundles(workspace.bundles.length > 0 ? workspace.bundles : [buildDefaultBundle()]);
-        setSelectedBundleId(workspace.bundles[0]?.id || null);
-        setNewBundleName('');
-        setIsAddingBundle(false);
+        setExports(workspace.exports.length > 0 ? workspace.exports : [buildDefaultExport()]);
+        setSelectedExportId(workspace.exports[0]?.id || null);
+        setNewExportName('');
+        setIsAddingExport(false);
         setResourceDialogType(null);
         setQuery('');
       } catch {
@@ -493,13 +493,13 @@ export default function App() {
             <h1 className="gcPageTitle">CX as Code Export Builder</h1>
             <span className="gcBetaBadge">Beta</span>
           </div>
-          <p className="gcPageSubtitle">A ready-to-wear starter for <code>genesyscloud_tf_export</code>.</p>
+          <p className="gcPageSubtitle">Create exports without hand-maintaining dependency wiring.</p>
         </div>
         <div className="gcPageMeta">
           <div className="gcHeaderLinks">
             <input ref={importRef} type="file" accept="application/json,.json" onChange={importWorkspaceFile} hidden />
             <button type="button" className="gcHeaderLink" onClick={() => importRef.current?.click()}>Import</button>
-            <button type="button" className="gcHeaderLink" onClick={downloadWorkspace} disabled={bundles.length === 0} title={bundles.length === 0 ? 'Create a bundle before exporting a workspace.' : 'Export workspace JSON'}>Export</button>
+            <button type="button" className="gcHeaderLink" onClick={downloadWorkspace} disabled={exports.length === 0} title={exports.length === 0 ? 'Create an export before saving a workspace.' : 'Export workspace JSON'}>Export</button>
             <button type="button" className="gcClearButton" onClick={reset}>Reset</button>
           </div>
           <div className="gcVersionPicker">
@@ -524,7 +524,7 @@ export default function App() {
         </button>
         <button type="button" className="stat-card mini-stat stat-button" onClick={() => setResourceDialogType('selected')}>
           <div className="mini-stat-heading"><p className="eyebrow">Selected</p><strong>{stats.selectedResourceCount}</strong></div>
-          <span>Across bundles</span>
+          <span>Across exports</span>
         </button>
         <button type="button" className="stat-card mini-stat stat-button" onClick={() => setResourceDialogType('available')}>
           <div className="mini-stat-heading"><p className="eyebrow">Available</p><strong>{stats.availableResourceCount}</strong></div>
@@ -532,69 +532,69 @@ export default function App() {
         </button>
       </div>
 
-      <section className="gcCard bundle-nav">
+      <section className="gcCard export-nav">
         <div className="section-title">
-          <div><h2>Bundles</h2><p>Select a bundle to build its export template.</p></div>
-          <div className="bundle-nav-actions">
-            {!isAddingBundle && <button type="button" className="gcHeaderLink" onClick={startAddingBundle}>Add bundle</button>}
+          <div><h2>Exports</h2><p>Select an export to build its Terraform template.</p></div>
+          <div className="export-nav-actions">
+            {!isAddingExport && <button type="button" className="gcHeaderLink" onClick={startAddingExport}>Add export</button>}
           </div>
         </div>
-        {isAddingBundle && <div className="field add-bundle-form">
-          <label htmlFor="new-bundle-name">Add bundle</label>
+        {isAddingExport && <div className="field add-export-form">
+          <label htmlFor="new-export-name">Add export</label>
           <div className="inline">
-              <input id="new-bundle-name" value={newBundleName} onChange={event => setNewBundleName(event.target.value)} placeholder="letters, numbers, _, and -" />
-            <button type="button" className="gcHeaderLink" onClick={addBundle}>Save</button>
-            <button type="button" className="gcClearButton" onClick={cancelAddingBundle}>Cancel</button>
+              <input id="new-export-name" value={newExportName} onChange={event => setNewExportName(event.target.value)} placeholder="letters, numbers, _, and -" />
+            <button type="button" className="gcHeaderLink" onClick={addExport}>Save</button>
+            <button type="button" className="gcClearButton" onClick={cancelAddingExport}>Cancel</button>
           </div>
         </div>}
-        <div className="bundle-list">
-          {bundles.map(bundle => {
-            if (renamingBundleId === bundle.id) {
-              return <div key={bundle.id} className="field add-bundle-form bundle-rename-form">
-                <label htmlFor={`rename-bundle-${bundle.id}`}>Rename bundle</label>
+        <div className="export-list">
+          {exports.map(exportItem => {
+            if (renamingExportId === exportItem.id) {
+              return <div key={exportItem.id} className="field add-export-form export-rename-form">
+                <label htmlFor={`rename-export-${exportItem.id}`}>Rename export</label>
                 <div className="inline">
                   <input
-                    id={`rename-bundle-${bundle.id}`}
-                    value={renameBundleName}
-                    onChange={event => setRenameBundleName(event.target.value)}
+                    id={`rename-export-${exportItem.id}`}
+                    value={renameExportName}
+                    onChange={event => setRenameExportName(event.target.value)}
                     placeholder="letters, numbers, _, and -"
                   />
-                  <button type="button" className="gcHeaderLink" onClick={saveRenamedBundle}>Save</button>
-                  <button type="button" className="gcClearButton" onClick={cancelRenamingBundle}>Cancel</button>
+                  <button type="button" className="gcHeaderLink" onClick={saveRenamedExport}>Save</button>
+                  <button type="button" className="gcClearButton" onClick={cancelRenamingExport}>Cancel</button>
                 </div>
               </div>;
             }
 
             return <button
               type="button"
-              key={bundle.id}
-              className={bundle.id === selectedBundleId ? 'bundle selected' : 'bundle'}
+              key={exportItem.id}
+              className={exportItem.id === selectedExportId ? 'export selected' : 'export'}
               onClick={() => {
-                cancelRenamingBundle();
-                setSelectedBundleId(bundle.id);
+                cancelRenamingExport();
+                setSelectedExportId(exportItem.id);
                 setQuery('');
                 setSelectedQuery('');
               }}
             >
               <span>
-                <strong>{bundle.name}</strong>
-                <small>{getBundleResourceCount(bundle)} {bundle.mode === 'paste' ? 'pasted' : 'selected'}</small>
+                <strong>{exportItem.name}</strong>
+                <small>{getExportResourceCount(exportItem)} {exportItem.mode === 'paste' ? 'pasted' : 'selected'}</small>
               </span>
-              <div className="bundle-actions">
+              <div className="actions">
                 <button
                   type="button"
                   className="gcHeaderLink"
-                  onClick={event => { event.stopPropagation(); startRenamingBundle(bundle); }}
+                  onClick={event => { event.stopPropagation(); startRenamingExport(exportItem); }}
                 >
                   rename
                 </button>
-                {bundles.length > 1 && (
+                {exports.length > 1 && (
                   <button
                     type="button"
-                    className="gcClearButton danger"
-                    onClick={event => { event.stopPropagation(); deleteBundle(bundle.id); }}
+                    className="gcClearButton destructive"
+                    onClick={event => { event.stopPropagation(); deleteExport(exportItem.id); }}
                   >
-                    delete
+                    remove
                   </button>
                 )}
               </div>
@@ -619,22 +619,22 @@ export default function App() {
         <section className="gcCard input-panel">
           <div className="section-title">
             <div>
-              <h2>{selectedBundleMode === 'catalog' ? 'Available resources' : 'include_filter_resources'}</h2>
+              <h2>{selectedExportMode === 'catalog' ? 'Available resources' : 'include_filter_resources'}</h2>
               <p>
-                {selectedBundleMode === 'catalog'
+                {selectedExportMode === 'catalog'
                   ? 'Add resource types to export. First-level dependencies are suggested for replace_with_datasource.'
                   : <>Paste one whole resource type per line. Patterns like <code>::^Name$</code> are normalized to the bare type.</>}
               </p>
             </div>
-            <gux-badge>{selectedBundleMode === 'catalog' ? availableResources.length : parsedPasteResourceTypes.length}</gux-badge>
+            <gux-badge>{selectedExportMode === 'catalog' ? availableResources.length : parsedPasteResourceTypes.length}</gux-badge>
           </div>
 
           <div className="input-toolbar">
             <div className="gcSegmentedControl" role="group" aria-label="Input mode">
-              <button type="button" className={selectedBundleMode === 'catalog' ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'} aria-checked={selectedBundleMode === 'catalog'} onClick={() => setSelectedBundleMode('catalog')}>Catalog</button>
-              <button type="button" className={selectedBundleMode === 'paste' ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'} aria-checked={selectedBundleMode === 'paste'} onClick={() => setSelectedBundleMode('paste')}>Paste</button>
+              <button type="button" className={selectedExportMode === 'catalog' ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'} aria-checked={selectedExportMode === 'catalog'} onClick={() => setSelectedExportMode('catalog')}>Catalog</button>
+              <button type="button" className={selectedExportMode === 'paste' ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'} aria-checked={selectedExportMode === 'paste'} onClick={() => setSelectedExportMode('paste')}>Paste</button>
             </div>
-            {selectedBundleMode === 'catalog' && <div className="search">
+            {selectedExportMode === 'catalog' && <div className="search">
               <input
                 type="search"
                 className="gcSearchInput"
@@ -646,18 +646,18 @@ export default function App() {
             </div>}
           </div>
 
-          {selectedBundleMode === 'catalog' ? <>
+          {selectedExportMode === 'catalog' ? <>
           <div className="resource-list">
             {availableResources.map(resource => <div className="resource" key={resource}>
               <code>{resource}</code>
-              <button type="button" className="gcHeaderLink" onClick={() => moveToBundle(resource)} title={`Add to ${selectedBundle.name}`}>add</button>
+              <button type="button" className="gcHeaderLink" onClick={() => moveToExport(resource)} title={`Add to ${selectedExport.name}`}>add</button>
             </div>)}
             {availableResources.length === 0 && <p className="empty">No available resources match that filter.</p>}
           </div>
           </> : <>
           <textarea
             className="paste-input"
-            value={selectedBundle.pastedIncludeFilterResources || ''}
+            value={selectedExport.pastedIncludeFilterResources || ''}
             onChange={event => updatePastedIncludeFilters(event.target.value)}
             placeholder={`genesyscloud_routing_queue\ngenesyscloud_architect_schedules\ngenesyscloud_flow`}
             spellCheck={false}
@@ -668,20 +668,20 @@ export default function App() {
               {parsedPasteResourceTypes.map(resource => <span className="chip" key={resource}>{resource}</span>)}
             </div>
           </div>}
-          {selectedGeneratedBundle?.firstLevelDependencies?.length > 0 && <div className="dependency-preview">
+          {selectedGeneratedExport?.firstLevelDependencies?.length > 0 && <div className="dependency-preview">
             <p className="eyebrow">First-level dependencies</p>
             <div className="chips scroll short">
-              {selectedGeneratedBundle.firstLevelDependencies.map(resource => <span className="chip" key={resource}>{resource}</span>)}
+              {selectedGeneratedExport.firstLevelDependencies.map(resource => <span className="chip" key={resource}>{resource}</span>)}
             </div>
           </div>}
           </>}
         </section>
 
-        {selectedBundleMode === 'catalog' ? <>
+        {selectedExportMode === 'catalog' ? <>
         <section className="gcCard selected-panel">
           <div className="section-title">
-            <div><h2>{selectedBundle.name}</h2><p>Primary resource types for this bundle. First-level dependencies drive <code>replace_with_datasource</code>.</p></div>
-            <gux-badge>{selectedBundleResources.length}</gux-badge>
+            <div><h2>{selectedExport.name}</h2><p>Primary resource types for this export. First-level dependencies drive <code>replace_with_datasource</code>.</p></div>
+            <gux-badge>{selectedExportResources.length}</gux-badge>
           </div>
           <div className="search">
             <input
@@ -694,18 +694,18 @@ export default function App() {
             {selectedQuery && <button type="button" className="search-clear" onClick={() => setSelectedQuery('')}>clear</button>}
           </div>
           <div className="resource-list">
-            {filteredSelectedBundleResources.map(resource => <div className="resource" key={resource}>
+            {filteredSelectedExportResources.map(resource => <div className="resource" key={resource}>
               <code>{resource}</code>
               <div className="actions">
-                <button type="button" className="gcClearButton" onClick={() => removeFromBundle(resource, selectedBundle.id)}>remove</button>
+                <button type="button" className="gcClearButton destructive" onClick={() => removeFromExport(resource, selectedExport.id)}>remove</button>
               </div>
             </div>)}
-            {filteredSelectedBundleResources.length === 0 && <p className="empty">No selected resources match that filter.</p>}
+            {filteredSelectedExportResources.length === 0 && <p className="empty">No selected resources match that filter.</p>}
           </div>
         </section>
         </> : null}
 
-        <section className={selectedBundleMode === 'paste' ? 'gcCard output output-panel--paste' : 'gcCard output'}>
+        <section className={selectedExportMode === 'paste' ? 'gcCard output output-panel--paste' : 'gcCard output'}>
           <div className="section-title">
             <div>
               <h2>Generated export</h2>

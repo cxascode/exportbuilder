@@ -8,42 +8,42 @@ function getKnownSelectedResources(values, knownResourceSet) {
   return [...new Set(values)].filter(resource => knownResourceSet.has(resource)).sort();
 }
 
-function getExportedSelectedResources(bundle, generatedBundle) {
-  if (bundle.mode === 'paste') {
-    const parsed = parsePastedResourceTypes(bundle.pastedIncludeFilterResources || '');
+function getExportedSelectedResources(exportItem, generatedExport) {
+  if (exportItem.mode === 'paste') {
+    const parsed = parsePastedResourceTypes(exportItem.pastedIncludeFilterResources || '');
     if (parsed.length > 0) return parsed;
   }
 
-  if (Array.isArray(bundle.selectedResources) && bundle.selectedResources.length > 0) {
-    return bundle.selectedResources;
+  if (Array.isArray(exportItem.selectedResources) && exportItem.selectedResources.length > 0) {
+    return exportItem.selectedResources;
   }
 
-  return generatedBundle?.includeFilterResources || [];
+  return generatedExport?.includeFilterResources || [];
 }
 
-function getImportedSelectedResources(bundle, knownResourceSet) {
+function getImportedSelectedResources(exportItem, knownResourceSet) {
   return getKnownSelectedResources(
-    Array.isArray(bundle.selectedResources) ? bundle.selectedResources : [],
+    Array.isArray(exportItem.selectedResources) ? exportItem.selectedResources : [],
     knownResourceSet,
   );
 }
 
-export function buildWorkspace({ bundles, model }) {
+export function buildWorkspace({ exports: exportItems, model }) {
   return {
     schema: WORKSPACE_SCHEMA,
     version: WORKSPACE_VERSION,
     exportedAt: new Date().toISOString(),
-    bundles: bundles.map(bundle => {
-      const generatedBundle = model?.bundles?.find(item => item.name === bundle.name);
-      const selectedResources = getExportedSelectedResources(bundle, generatedBundle);
+    exports: exportItems.map(exportItem => {
+      const generatedExport = model?.exports?.find(item => item.name === exportItem.name);
+      const selectedResources = getExportedSelectedResources(exportItem, generatedExport);
 
       return {
-        name: bundle.name,
-        tfExportResourceName: generatedBundle?.tfExportResourceName || getTfExportResourceName(bundle.name),
+        name: exportItem.name,
+        tfExportResourceName: generatedExport?.tfExportResourceName || getTfExportResourceName(exportItem.name),
         selectedResources,
-        firstLevelDependencies: generatedBundle?.firstLevelDependencies || [],
-        includeFilterResources: generatedBundle?.includeFilterResources || [],
-        replaceWithDatasource: generatedBundle?.replaceWithDatasource || [],
+        firstLevelDependencies: generatedExport?.firstLevelDependencies || [],
+        includeFilterResources: generatedExport?.includeFilterResources || [],
+        replaceWithDatasource: generatedExport?.replaceWithDatasource || [],
       };
     }),
   };
@@ -61,33 +61,35 @@ export function downloadJsonFile({ filename, data }) {
   URL.revokeObjectURL(url);
 }
 
-export function parseWorkspace({ rawText, knownResources, sanitizeBundleName, createId }) {
+export function parseWorkspace({ rawText, knownResources, sanitizeExportName, createId }) {
   const workspace = JSON.parse(rawText || '{}');
 
-  if (workspace.schema !== WORKSPACE_SCHEMA || !Array.isArray(workspace.bundles)) {
+  const workspaceExports = workspace.exports ?? workspace.bundles;
+
+  if (workspace.schema !== WORKSPACE_SCHEMA || !Array.isArray(workspaceExports)) {
     throw new Error('INVALID_WORKSPACE');
   }
 
   const knownResourceSet = new Set(knownResources);
   const seenNames = new Set();
 
-  const bundles = workspace.bundles
-    .map(bundle => {
-      const name = sanitizeBundleName(String(bundle.name || ''));
+  const exports = workspaceExports
+    .map(exportItem => {
+      const name = sanitizeExportName(String(exportItem.name || ''));
 
       return {
         id: createId(),
         name,
         mode: 'catalog',
-        selectedResources: getImportedSelectedResources(bundle, knownResourceSet),
+        selectedResources: getImportedSelectedResources(exportItem, knownResourceSet),
         pastedIncludeFilterResources: '',
       };
     })
-    .filter(bundle => {
-      if (!bundle.name || seenNames.has(bundle.name)) return false;
-      seenNames.add(bundle.name);
+    .filter(exportItem => {
+      if (!exportItem.name || seenNames.has(exportItem.name)) return false;
+      seenNames.add(exportItem.name);
       return true;
     });
 
-  return { bundles };
+  return { exports };
 }
