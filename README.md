@@ -22,9 +22,8 @@ Export Builder handles the boilerplate so you can focus on the org-specific part
 
 Pick resource types from the live Genesys Cloud dependency catalog (with a bundled fallback for offline use). Export Builder:
 
-- Expands selected types into `include_filter_resources` using the dependency tree
-- Derives first-level dependencies
-- Suggests `replace_with_datasource` entries as `type::.*` for those dependencies
+- Seeds `include_filter_resources` with the resource types you select
+- Derives first-level dependencies and suggests `replace_with_datasource` entries as `type::.*` for those dependencies
 - Sets `use_legacy_architect_flow_exporter` when flows appear only as dependencies
 
 Catalog mode also tracks which types are assigned across bundles so you do not double-assign the same resource type.

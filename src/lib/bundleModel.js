@@ -1,4 +1,4 @@
-import { getExportResources, getFirstLevelDependencies, getBundleResources, getTfExportResourceName } from './resourceModel.js';
+import { getFirstLevelDependencies, getBundleResources, getTfExportResourceName } from './resourceModel.js';
 import { buildPasteModeModel, parseIncludeFilterResourcesText } from './includeFilterParser.js';
 
 const FLOW_RESOURCE_TYPE = 'genesyscloud_flow';
@@ -23,10 +23,7 @@ function buildCatalogBundleModel(bundle, dependencyMap, bundleIndex) {
     selectedResources,
     dependencyMap,
   });
-  const includeFilterResources = getExportResources({
-    selectedResources,
-    dependencyMap,
-  });
+  const includeFilterResources = selectedResources;
 
   return {
     name: bundle.name,

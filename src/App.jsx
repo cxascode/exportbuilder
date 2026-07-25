@@ -538,7 +538,7 @@ export default function App() {
               <h2>{selectedBundleMode === 'catalog' ? 'Available resources' : 'include_filter_resources'}</h2>
               <p>
                 {selectedBundleMode === 'catalog'
-                  ? 'Add resource types to export. Dependencies are expanded automatically in the export.'
+                  ? 'Add resource types to export. First-level dependencies are suggested for replace_with_datasource.'
                   : <>Paste one whole resource type per line. Patterns like <code>::^Name$</code> are normalized to the bare type.</>}
               </p>
             </div>

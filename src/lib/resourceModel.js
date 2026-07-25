@@ -49,13 +49,6 @@ export function getFirstLevelDependencies({ selectedResources, dependencyMap }) 
   return [...dependencies].sort();
 }
 
-export function getExportResources({ selectedResources, dependencyMap }) {
-  return [...new Set([
-    ...selectedResources,
-    ...getFirstLevelDependencies({ selectedResources, dependencyMap }),
-  ])].sort();
-}
-
 export function getBundleResources(bundle) {
   if (!bundle) return [];
   return Array.isArray(bundle.selectedResources) ? bundle.selectedResources : [];
