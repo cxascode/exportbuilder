@@ -140,6 +140,28 @@ export function cacheDependencyTreeVersionOptions(latestVersion, now = Date.now(
   return options;
 }
 
-export function getDependencyTreeVersionLabel(version) {
-  return version === LATEST_DEPENDENCY_TREE_VERSION ? 'Latest' : `v${version}`;
+export function getNewestListedRelease(versionOptions) {
+  if (!Array.isArray(versionOptions)) return '';
+
+  const found = versionOptions.find(
+    version => version && version !== LATEST_DEPENDENCY_TREE_VERSION,
+  );
+
+  return found ? String(found).trim() : '';
+}
+
+export function formatProviderVersion(version) {
+  if (!version || version === LATEST_DEPENDENCY_TREE_VERSION) return '';
+
+  const trimmed = String(version).trim();
+  return trimmed.startsWith('v') ? trimmed : `v${trimmed}`;
+}
+
+export function getDependencyTreeVersionLabel(version, newestListedRelease = '') {
+  if (version === LATEST_DEPENDENCY_TREE_VERSION) {
+    const latestLabel = formatProviderVersion(newestListedRelease);
+    return latestLabel ? `Latest (${latestLabel})` : 'Latest';
+  }
+
+  return formatProviderVersion(version);
 }

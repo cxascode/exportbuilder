@@ -93,19 +93,6 @@ code, pre, .gcMono {
   color: var(--gc-text);
 }
 
-.gcPageSubtitle {
-  margin: 0;
-  max-width: 920px;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--gc-subtle);
-}
-
-.gcPageSubtitle code {
-  font-size: 0.95em;
-  color: var(--gc-text);
-}
-
 .gcPageMeta {
   display: flex;
   align-items: center;

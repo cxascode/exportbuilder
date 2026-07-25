@@ -27,6 +27,7 @@ import {
   DEPENDENCY_TREE_INDEX_URL,
   getCachedDependencyTreeVersionOptions,
   getDependencyTreeVersionLabel,
+  getNewestListedRelease,
   LATEST_DEPENDENCY_TREE_VERSION,
 } from './lib/dependencyTreeVersions.js';
 
@@ -235,6 +236,10 @@ export default function App() {
   const selectedExport = exports.find(exportItem => exportItem.id === selectedExportId) || exports[0] || buildDefaultExport();
   const selectedExportMode = selectedExport.mode === 'paste' ? 'paste' : 'catalog';
   const catalogExports = useMemo(() => exports.filter(exportItem => exportItem.mode !== 'paste'), [exports]);
+  const newestListedRelease = useMemo(
+    () => getNewestListedRelease(catalogVersionOptions),
+    [catalogVersionOptions],
+  );
   const selectedExportResources = getExportResources(selectedExport);
   const filteredSelectedExportResources = selectedExportResources.filter(resource => resource.includes(selectedQuery));
   const selectedResources = useMemo(() => [...new Set(catalogExports.flatMap(exportItem => getExportResources(exportItem)))].sort(), [catalogExports]);
@@ -520,7 +525,6 @@ export default function App() {
           <div className="gcPageTitleLine">
             <h1 className="gcPageTitle">CX as Code Export Builder</h1>
           </div>
-          <p className="gcPageSubtitle">Create exports without hand-maintaining dependency wiring.</p>
         </div>
         <div className="gcPageMeta">
           <div className="gcHeaderLinks">
@@ -534,7 +538,7 @@ export default function App() {
             <gux-dropdown ref={versionDropdownRef} value={selectedCatalogVersion}>
               <gux-listbox>
                 {catalogVersionOptions.map(version => (
-                  <gux-option key={version} value={version}>{getDependencyTreeVersionLabel(version)}</gux-option>
+                  <gux-option key={version} value={version}>{getDependencyTreeVersionLabel(version, newestListedRelease)}</gux-option>
                 ))}
               </gux-listbox>
             </gux-dropdown>
