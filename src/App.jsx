@@ -12,7 +12,7 @@ import {
   validateBundles,
 } from './lib/resourceModel.js';
 import { buildWorkspace, downloadJsonFile, parseWorkspace } from './lib/workspace.js';
-import { parsePastedResourceTypes } from './lib/includeFilterParser.js';
+import { getBundleResourceCount, parsePastedResourceTypes } from './lib/includeFilterParser.js';
 import {
   buildDependencyTreeUrl,
   buildDependencyTreeVersionOptionsFromIndex,
@@ -232,12 +232,20 @@ export default function App() {
   }, [assigned, query, allResources, selectedBundleResources]);
 
   const stats = useMemo(() => {
-    return getBundleStats({
+    const catalogStats = getBundleStats({
       resources: allResources,
       bundles: catalogBundles,
       assigned,
     });
-  }, [assigned, catalogBundles, allResources]);
+    const pasteSelectedCount = bundles
+      .filter(bundle => bundle.mode === 'paste')
+      .reduce((total, bundle) => total + getBundleResourceCount(bundle), 0);
+
+    return {
+      ...catalogStats,
+      selectedResourceCount: catalogStats.selectedResourceCount + pasteSelectedCount,
+    };
+  }, [assigned, bundles, catalogBundles, allResources]);
 
   const validation = useMemo(() => {
     return validateBundles({ bundles: catalogBundles });
@@ -336,7 +344,27 @@ export default function App() {
     if (!selectedBundleId) return;
 
     setBundles(current => current.map(bundle => {
-      return bundle.id === selectedBundleId ? { ...bundle, mode } : bundle;
+      if (bundle.id !== selectedBundleId) return bundle;
+
+      if (mode === 'paste' && bundle.mode !== 'paste') {
+        const pasted = String(bundle.pastedIncludeFilterResources || '').trim();
+        const seededPaste = pasted || getBundleResources(bundle).join('\n');
+
+        return { ...bundle, mode, pastedIncludeFilterResources: seededPaste };
+      }
+
+      if (mode === 'catalog' && bundle.mode === 'paste') {
+        const selected = getBundleResources(bundle);
+        const knownResourceSet = new Set(allResources);
+        const seededSelected = selected.length > 0
+          ? selected
+          : parsePastedResourceTypes(bundle.pastedIncludeFilterResources)
+            .filter(resource => knownResourceSet.has(resource));
+
+        return { ...bundle, mode, selectedResources: seededSelected };
+      }
+
+      return { ...bundle, mode };
     }));
   }
 
@@ -497,7 +525,10 @@ export default function App() {
         </div>}
         <div className="bundle-list">
           {bundles.map(bundle => <button type="button" key={bundle.id} className={bundle.id === selectedBundleId ? 'bundle selected' : 'bundle'} onClick={() => { setSelectedBundleId(bundle.id); setQuery(''); setSelectedQuery(''); }}>
-            <span><strong>{bundle.name}</strong><small>{getBundleResources(bundle).length} selected</small></span>
+            <span>
+              <strong>{bundle.name}</strong>
+              <small>{getBundleResourceCount(bundle)} {bundle.mode === 'paste' ? 'pasted' : 'selected'}</small>
+            </span>
             {bundles.length > 1 && (
               <button
                 type="button"

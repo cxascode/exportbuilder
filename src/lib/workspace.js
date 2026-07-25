@@ -1,7 +1,32 @@
 import { CORE_BUNDLE_NAME, getTfExportResourceName } from './resourceModel.js';
+import { parsePastedResourceTypes } from './includeFilterParser.js';
 
 export const WORKSPACE_SCHEMA = 'cxascode-exportbuilder';
 export const WORKSPACE_VERSION = 1;
+
+function getKnownSelectedResources(values, knownResourceSet) {
+  return [...new Set(values)].filter(resource => knownResourceSet.has(resource)).sort();
+}
+
+function getExportedSelectedResources(bundle, generatedBundle) {
+  if (bundle.mode === 'paste') {
+    const parsed = parsePastedResourceTypes(bundle.pastedIncludeFilterResources || '');
+    if (parsed.length > 0) return parsed;
+  }
+
+  if (Array.isArray(bundle.selectedResources) && bundle.selectedResources.length > 0) {
+    return bundle.selectedResources;
+  }
+
+  return generatedBundle?.includeFilterResources || [];
+}
+
+function getImportedSelectedResources(bundle, knownResourceSet) {
+  return getKnownSelectedResources(
+    Array.isArray(bundle.selectedResources) ? bundle.selectedResources : [],
+    knownResourceSet,
+  );
+}
 
 export function buildWorkspace({ bundles, model }) {
   return {
@@ -10,13 +35,12 @@ export function buildWorkspace({ bundles, model }) {
     exportedAt: new Date().toISOString(),
     bundles: bundles.map((bundle, bundleIndex) => {
       const generatedBundle = model?.bundles?.find(item => item.name === bundle.name);
+      const selectedResources = getExportedSelectedResources(bundle, generatedBundle);
 
       return {
         name: bundle.name,
-        mode: bundle.mode === 'paste' ? 'paste' : 'catalog',
         tfExportResourceName: generatedBundle?.tfExportResourceName || getTfExportResourceName(bundleIndex, bundle.name),
-        selectedResources: Array.isArray(bundle.selectedResources) ? bundle.selectedResources : [],
-        pastedIncludeFilterResources: bundle.pastedIncludeFilterResources || '',
+        selectedResources,
         firstLevelDependencies: generatedBundle?.firstLevelDependencies || [],
         includeFilterResources: generatedBundle?.includeFilterResources || [],
         replaceWithDatasource: generatedBundle?.replaceWithDatasource || [],
@@ -50,16 +74,13 @@ export function parseWorkspace({ rawText, knownResources, sanitizeBundleName, cr
   const bundles = workspace.bundles
     .map(bundle => {
       const name = sanitizeBundleName(String(bundle.name || ''));
-      const selectedResources = Array.isArray(bundle.selectedResources)
-        ? [...new Set(bundle.selectedResources)].filter(resource => knownResourceSet.has(resource)).sort()
-        : [];
 
       return {
         id: createId(),
         name,
-        mode: bundle.mode === 'paste' ? 'paste' : 'catalog',
-        selectedResources,
-        pastedIncludeFilterResources: String(bundle.pastedIncludeFilterResources || ''),
+        mode: 'catalog',
+        selectedResources: getImportedSelectedResources(bundle, knownResourceSet),
+        pastedIncludeFilterResources: '',
       };
     })
     .filter(bundle => {
