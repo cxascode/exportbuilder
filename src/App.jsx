@@ -377,10 +377,9 @@ export default function App() {
   }, [model.exports, selectedExport.name]);
 
   const mainTfTemplate = useMemo(() => {
-    return model.exports
-      .map(exportItem => buildTfExportTemplate(exportItem, tfExportMode))
-      .join('\n\n');
-  }, [model.exports, tfExportMode]);
+    if (!selectedGeneratedExport) return '';
+    return buildTfExportTemplate(selectedGeneratedExport, tfExportMode);
+  }, [selectedGeneratedExport, tfExportMode]);
 
   function startAddingExport() {
     cancelRenamingExport();
@@ -504,6 +503,7 @@ export default function App() {
 
       return {
         ...exportItem,
+        mode: 'builder',
         filterBuilderRows: rows.map(row => (
           row.id === rowId ? { ...row, [field]: value } : row
         )),
@@ -521,6 +521,7 @@ export default function App() {
 
       return {
         ...exportItem,
+        mode: 'builder',
         filterBuilderRows: [...rows, createFilterBuilderRow()],
       };
     }));
@@ -537,6 +538,7 @@ export default function App() {
 
       return {
         ...exportItem,
+        mode: 'builder',
         filterBuilderRows: nextRows.length > 0 ? nextRows : [createFilterBuilderRow()],
       };
     }));
@@ -547,7 +549,7 @@ export default function App() {
 
     setExports(current => current.map(exportItem => {
       return exportItem.id === selectedExportId
-        ? { ...exportItem, pastedIncludeFilterResources: value }
+        ? { ...exportItem, mode: 'paste', pastedIncludeFilterResources: value }
         : exportItem;
     }));
   }

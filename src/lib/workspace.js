@@ -1,11 +1,76 @@
 import { getTfExportResourceName } from './resourceModel.js';
-import { parsePastedResourceTypes } from './includeFilterParser.js';
+import { extractResourceType, parsePastedResourceTypes } from './includeFilterParser.js';
+import { createFilterBuilderRow, entriesToFilterBuilderRows } from './filterBuilder.js';
 
 export const WORKSPACE_SCHEMA = 'cxascode-exportbuilder';
 export const WORKSPACE_VERSION = 1;
 
 function getKnownSelectedResources(values, knownResourceSet) {
   return [...new Set(values)].filter(resource => knownResourceSet.has(resource)).sort();
+}
+
+function isNamedFilterEntry(entry) {
+  return /::\^/.test(String(entry || ''));
+}
+
+function isBareResourceType(entry, knownResourceSet) {
+  const trimmed = String(entry || '').trim();
+  return knownResourceSet.has(trimmed) && !trimmed.includes('::');
+}
+
+function getImportedFilterEntries(exportItem, knownResourceSet) {
+  const includeFilterResources = Array.isArray(exportItem.includeFilterResources)
+    ? exportItem.includeFilterResources.filter(Boolean)
+    : [];
+
+  if (includeFilterResources.length > 0) {
+    return includeFilterResources;
+  }
+
+  return getKnownSelectedResources(
+    Array.isArray(exportItem.selectedResources) ? exportItem.selectedResources : [],
+    knownResourceSet,
+  );
+}
+
+function buildImportedExportState(exportItem, knownResourceSet, createId) {
+  const filterEntries = getImportedFilterEntries(exportItem, knownResourceSet);
+
+  const base = {
+    id: createId(),
+    name: String(exportItem.name || ''),
+    pastedIncludeFilterResources: '',
+    filterBuilderRows: [createFilterBuilderRow()],
+  };
+
+  if (filterEntries.some(isNamedFilterEntry)) {
+    return {
+      ...base,
+      mode: 'builder',
+      selectedResources: [],
+      filterBuilderRows: entriesToFilterBuilderRows(filterEntries),
+    };
+  }
+
+  const nonBareEntries = filterEntries.filter(entry => !isBareResourceType(entry, knownResourceSet));
+
+  if (nonBareEntries.length > 0) {
+    return {
+      ...base,
+      mode: 'paste',
+      selectedResources: [],
+      pastedIncludeFilterResources: filterEntries.join('\n'),
+    };
+  }
+
+  return {
+    ...base,
+    mode: 'catalog',
+    selectedResources: getKnownSelectedResources(
+      filterEntries.map(extractResourceType).filter(type => knownResourceSet.has(type)),
+      knownResourceSet,
+    ),
+  };
 }
 
 function getExportedSelectedResources(exportItem, generatedExport) {
@@ -19,13 +84,6 @@ function getExportedSelectedResources(exportItem, generatedExport) {
   }
 
   return generatedExport?.includeFilterResources || [];
-}
-
-function getImportedSelectedResources(exportItem, knownResourceSet) {
-  return getKnownSelectedResources(
-    Array.isArray(exportItem.selectedResources) ? exportItem.selectedResources : [],
-    knownResourceSet,
-  );
 }
 
 export function buildWorkspace({ exports: exportItems, model }) {
@@ -75,14 +133,11 @@ export function parseWorkspace({ rawText, knownResources, sanitizeExportName, cr
 
   const exports = workspaceExports
     .map(exportItem => {
-      const name = sanitizeExportName(String(exportItem.name || ''));
+      const imported = buildImportedExportState(exportItem, knownResourceSet, createId);
 
       return {
-        id: createId(),
-        name,
-        mode: 'catalog',
-        selectedResources: getImportedSelectedResources(exportItem, knownResourceSet),
-        pastedIncludeFilterResources: '',
+        ...imported,
+        name: sanitizeExportName(imported.name),
       };
     })
     .filter(exportItem => {
