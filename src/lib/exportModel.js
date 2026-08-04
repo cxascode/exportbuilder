@@ -1,5 +1,6 @@
 import { getFirstLevelDependencies, getExportResources, getTfExportResourceName } from './resourceModel.js';
 import { buildPasteModeModel, parseIncludeFilterResourcesText } from './includeFilterParser.js';
+import { filterBuilderRowsToEntries, getFilterBuilderRows } from './filterBuilder.js';
 
 function uniqueSorted(values) {
   return [...new Set(values)].sort();
@@ -48,6 +49,25 @@ function buildPasteExportModel(exportItem, dependencyMap) {
   };
 }
 
+function buildBuilderExportModel(exportItem, dependencyMap) {
+  const filterEntries = filterBuilderRowsToEntries(getFilterBuilderRows(exportItem));
+  const builderModel = buildPasteModeModel({
+    filterEntries,
+    dependencyMap,
+  });
+
+  return {
+    name: exportItem.name,
+    mode: 'builder',
+    tfExportResourceName: getTfExportResourceName(exportItem.name),
+    selectedResources: builderModel.primaryResourceTypes,
+    primaryResourceTypes: builderModel.primaryResourceTypes,
+    firstLevelDependencies: builderModel.firstLevelDependencies,
+    includeFilterResources: builderModel.includeFilterResources,
+    replaceWithDatasource: builderModel.replaceWithDatasource,
+  };
+}
+
 export function buildExportModel({
   dependencyMap = new Map(),
   exports: exportItems,
@@ -57,6 +77,10 @@ export function buildExportModel({
   const exportModels = exportItems.map(exportItem => {
     if (exportItem.mode === 'paste') {
       return buildPasteExportModel(exportItem, dependencyMap);
+    }
+
+    if (exportItem.mode === 'builder') {
+      return buildBuilderExportModel(exportItem, dependencyMap);
     }
 
     return buildCatalogExportModel(exportItem, dependencyMap);

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import FilterResourceTypeInput from './components/FilterResourceTypeInput.jsx';
 import { Pencil, Trash2 } from 'lucide-react';
 import resources from './data/resources.json';
 import { buildFallbackCatalog, parseResourceCatalog } from './lib/resourceCatalog.js';
@@ -14,7 +15,14 @@ import {
   validateExports,
 } from './lib/resourceModel.js';
 import { buildWorkspace, downloadJsonFile, parseWorkspace } from './lib/workspace.js';
-import { getExportResourceCount, parsePastedResourceTypes } from './lib/includeFilterParser.js';
+import { getExportResourceCount, parseIncludeFilterResourcesText, parsePastedResourceTypes } from './lib/includeFilterParser.js';
+import {
+  createFilterBuilderRow,
+  entriesToFilterBuilderRows,
+  filterBuilderRowsToEntries,
+  getFilterBuilderRowCount,
+  getFilterBuilderRows,
+} from './lib/filterBuilder.js';
 import {
   clearPermalinkResource,
   readPermalinkResource,
@@ -37,8 +45,14 @@ const BUNDLED_RESOURCE_CATALOG = buildFallbackCatalog(resources);
 const TF_EXPORT_MODE_EXPORT = 'export';
 const TF_EXPORT_MODE_EXPORT_STATE = 'exportstate';
 
+function escapeHclString(value) {
+  return String(value || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"');
+}
+
 function formatTerraformResourceList(values) {
-  return values.map(value => `    "${value}"`).join(',\n');
+  return values.map(value => `    "${escapeHclString(value)}"`).join(',\n');
 }
 
 function buildTfExportTemplate(exportItem, mode = TF_EXPORT_MODE_EXPORT) {
@@ -86,6 +100,7 @@ function buildDefaultExport(prefillResource = null) {
     mode: 'catalog',
     selectedResources: normalizedResource ? [normalizedResource] : [],
     pastedIncludeFilterResources: '',
+    filterBuilderRows: [createFilterBuilderRow()],
   };
 }
 
@@ -120,7 +135,7 @@ export default function App() {
   useEffect(() => {
     const defaultExport = exports.find(exportItem => exportItem.name === CORE_EXPORT_NAME);
 
-    if (!defaultExport || defaultExport.mode === 'paste') {
+    if (!defaultExport || defaultExport.mode === 'paste' || defaultExport.mode === 'builder') {
       clearPermalinkResource();
       return;
     }
@@ -248,8 +263,15 @@ export default function App() {
   }, [selectedCatalogVersion]);
 
   const selectedExport = exports.find(exportItem => exportItem.id === selectedExportId) || exports[0] || buildDefaultExport();
-  const selectedExportMode = selectedExport.mode === 'paste' ? 'paste' : 'catalog';
-  const catalogExports = useMemo(() => exports.filter(exportItem => exportItem.mode !== 'paste'), [exports]);
+  const selectedExportMode = selectedExport.mode === 'paste'
+    ? 'paste'
+    : selectedExport.mode === 'builder'
+      ? 'builder'
+      : 'catalog';
+  const catalogExports = useMemo(
+    () => exports.filter(exportItem => exportItem.mode === 'catalog'),
+    [exports],
+  );
   const newestListedRelease = useMemo(
     () => getNewestListedRelease(catalogVersionOptions),
     [catalogVersionOptions],
@@ -261,6 +283,19 @@ export default function App() {
   const parsedPasteResourceTypes = useMemo(() => {
     return parsePastedResourceTypes(selectedExport.pastedIncludeFilterResources);
   }, [selectedExport.pastedIncludeFilterResources]);
+
+  const filterBuilderRows = useMemo(() => {
+    if (selectedExport.mode !== 'builder') return [];
+    return getFilterBuilderRows(selectedExport);
+  }, [selectedExport]);
+
+  const builderFilterEntries = useMemo(() => {
+    return filterBuilderRowsToEntries(filterBuilderRows);
+  }, [filterBuilderRows]);
+
+  const builderRowCount = useMemo(() => {
+    return getFilterBuilderRowCount(filterBuilderRows);
+  }, [filterBuilderRows]);
 
   const unassignedResources = useMemo(() => {
     return getAvailableExportResources({
@@ -286,13 +321,13 @@ export default function App() {
       exports: catalogExports,
       assigned,
     });
-    const pasteSelectedCount = exports
-      .filter(exportItem => exportItem.mode === 'paste')
+    const nonCatalogSelectedCount = exports
+      .filter(exportItem => exportItem.mode === 'paste' || exportItem.mode === 'builder')
       .reduce((total, exportItem) => total + getExportResourceCount(exportItem), 0);
 
     return {
       ...catalogStats,
-      selectedResourceCount: catalogStats.selectedResourceCount + pasteSelectedCount,
+      selectedResourceCount: catalogStats.selectedResourceCount + nonCatalogSelectedCount,
     };
   }, [assigned, exports, catalogExports, allResources]);
 
@@ -418,23 +453,92 @@ export default function App() {
 
       if (mode === 'paste' && exportItem.mode !== 'paste') {
         const pasted = String(exportItem.pastedIncludeFilterResources || '').trim();
-        const seededPaste = pasted || getExportResources(exportItem).join('\n');
+        const seededPaste = pasted
+          || (exportItem.mode === 'builder'
+            ? filterBuilderRowsToEntries(exportItem.filterBuilderRows).join('\n')
+            : getExportResources(exportItem).join('\n'));
 
         return { ...exportItem, mode, pastedIncludeFilterResources: seededPaste };
       }
 
-      if (mode === 'catalog' && exportItem.mode === 'paste') {
-        const selected = getExportResources(exportItem);
+      if (mode === 'builder') {
+        const existingRows = getFilterBuilderRows(exportItem);
+        const seededRows = getFilterBuilderRowCount(existingRows) > 0
+          ? existingRows
+          : entriesToFilterBuilderRows(
+            exportItem.mode === 'paste'
+              ? parseIncludeFilterResourcesText(exportItem.pastedIncludeFilterResources)
+              : getExportResources(exportItem),
+          );
+
+        return { ...exportItem, mode: 'builder', filterBuilderRows: seededRows };
+      }
+
+      if (mode === 'catalog' && exportItem.mode !== 'catalog') {
         const knownResourceSet = new Set(allResources);
-        const seededSelected = selected.length > 0
-          ? selected
-          : parsePastedResourceTypes(exportItem.pastedIncludeFilterResources)
-            .filter(resource => knownResourceSet.has(resource));
+        const seededSelected = exportItem.mode === 'paste'
+          ? (getExportResources(exportItem).length > 0
+            ? getExportResources(exportItem)
+            : parsePastedResourceTypes(exportItem.pastedIncludeFilterResources)
+              .filter(resource => knownResourceSet.has(resource)))
+          : [...new Set(
+            filterBuilderRowsToEntries(exportItem.filterBuilderRows)
+              .map(entry => entry.split('::')[0])
+              .filter(resource => knownResourceSet.has(resource)),
+          )].sort();
 
         return { ...exportItem, mode, selectedResources: seededSelected };
       }
 
       return { ...exportItem, mode };
+    }));
+  }
+
+  function updateFilterBuilderRow(rowId, field, value) {
+    if (!selectedExportId) return;
+
+    setExports(current => current.map(exportItem => {
+      if (exportItem.id !== selectedExportId) return exportItem;
+
+      const rows = getFilterBuilderRows(exportItem);
+
+      return {
+        ...exportItem,
+        filterBuilderRows: rows.map(row => (
+          row.id === rowId ? { ...row, [field]: value } : row
+        )),
+      };
+    }));
+  }
+
+  function addFilterBuilderRow() {
+    if (!selectedExportId) return;
+
+    setExports(current => current.map(exportItem => {
+      if (exportItem.id !== selectedExportId) return exportItem;
+
+      const rows = getFilterBuilderRows(exportItem);
+
+      return {
+        ...exportItem,
+        filterBuilderRows: [...rows, createFilterBuilderRow()],
+      };
+    }));
+  }
+
+  function removeFilterBuilderRow(rowId) {
+    if (!selectedExportId) return;
+
+    setExports(current => current.map(exportItem => {
+      if (exportItem.id !== selectedExportId) return exportItem;
+
+      const rows = getFilterBuilderRows(exportItem);
+      const nextRows = rows.filter(row => row.id !== rowId);
+
+      return {
+        ...exportItem,
+        filterBuilderRows: nextRows.length > 0 ? nextRows : [createFilterBuilderRow()],
+      };
     }));
   }
 
@@ -623,7 +727,7 @@ export default function App() {
             >
               <span>
                 <strong>{exportItem.name}</strong>
-                <small>{getExportResourceCount(exportItem)} {exportItem.mode === 'paste' ? 'pasted' : 'selected'}</small>
+                <small>{getExportResourceCount(exportItem)} {exportItem.mode === 'paste' ? 'pasted' : exportItem.mode === 'builder' ? 'filtered' : 'selected'}</small>
               </span>
               <div className="export-actions">
                 <button
@@ -668,14 +772,16 @@ export default function App() {
         <section className="gcCard input-panel">
           <div className="section-title">
             <div>
-              <h2>{selectedExportMode === 'catalog' ? 'Available resources' : 'include_filter_resources'}</h2>
+              <h2>Available resources</h2>
               <p>
                 {selectedExportMode === 'catalog'
                   ? 'Add resource types to export. First-level dependencies are suggested for replace_with_datasource.'
-                  : <>Paste one whole resource type per line. Patterns like <code>::^Name$</code> are normalized to the bare type.</>}
+                  : selectedExportMode === 'builder'
+                    ? 'Pick a resource type and name to build named include filters. Special regex characters are escaped automatically.'
+                    : <>Paste filter entries one per line. Named patterns like <code>::^Name$</code> are preserved in output.</>}
               </p>
             </div>
-            <gux-badge>{selectedExportMode === 'catalog' ? availableResources.length : parsedPasteResourceTypes.length}</gux-badge>
+            <gux-badge>{selectedExportMode === 'catalog' ? availableResources.length : selectedExportMode === 'builder' ? builderRowCount : parsedPasteResourceTypes.length}</gux-badge>
           </div>
 
           <div className="input-toolbar">
@@ -687,6 +793,14 @@ export default function App() {
                 onClick={() => setSelectedExportMode('catalog')}
               >
                 Catalog
+              </button>
+              <button
+                type="button"
+                className="gcSegmentedControl__option"
+                aria-checked={selectedExportMode === 'builder'}
+                onClick={() => setSelectedExportMode('builder')}
+              >
+                Filter
               </button>
               <button
                 type="button"
@@ -717,6 +831,67 @@ export default function App() {
             </div>)}
             {availableResources.length === 0 && <p className="empty">No available resources match that filter.</p>}
           </div>
+          </> : selectedExportMode === 'builder' ? <>
+          <div className="filter-builder-table-wrap">
+            <table className="filter-builder-table">
+              <thead>
+                <tr>
+                  <th>Resource type</th>
+                  <th>Name / label</th>
+                  <th aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {filterBuilderRows.map(row => (
+                  <tr key={row.id}>
+                    <td className="filter-builder-type-cell">
+                      <FilterResourceTypeInput
+                        value={row.resourceType}
+                        resources={allResources}
+                        onChange={next => updateFilterBuilderRow(row.id, 'resourceType', next)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        className="filter-builder-input"
+                        value={row.name}
+                        onChange={event => updateFilterBuilderRow(row.id, 'name', event.target.value)}
+                        placeholder="Resource name in Genesys Cloud"
+                        autoComplete="off"
+                      />
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="export-action export-action--destructive"
+                        title="Remove row"
+                        aria-label="Remove row"
+                        onClick={() => removeFilterBuilderRow(row.id)}
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="filter-builder-actions">
+            <button type="button" className="gcHeaderLink" onClick={addFilterBuilderRow}>Add row</button>
+          </div>
+          {builderFilterEntries.length > 0 && <div className="paste-preview">
+            <p className="eyebrow">Generated filters</p>
+            <div className="chips scroll short">
+              {builderFilterEntries.map(entry => <span className="chip chip--mono" key={entry}>{entry}</span>)}
+            </div>
+          </div>}
+          {selectedGeneratedExport?.firstLevelDependencies?.length > 0 && <div className="dependency-preview">
+            <p className="eyebrow">First-level dependencies</p>
+            <div className="chips scroll short">
+              {selectedGeneratedExport.firstLevelDependencies.map(resource => <span className="chip" key={resource}>{resource}</span>)}
+            </div>
+          </div>}
           </> : <>
           <textarea
             className="paste-input"
@@ -768,7 +943,7 @@ export default function App() {
         </section>
         </> : null}
 
-        <section className={selectedExportMode === 'paste' ? 'gcCard output output-panel--paste' : 'gcCard output'}>
+        <section className={selectedExportMode === 'paste' || selectedExportMode === 'builder' ? 'gcCard output output-panel--paste' : 'gcCard output'}>
           <div className="section-title">
             <div>
               <h2>Generated export</h2>

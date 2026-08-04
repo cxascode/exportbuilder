@@ -40,7 +40,13 @@ export function getExportResourceCount(exportItem) {
   if (!exportItem) return 0;
 
   if (exportItem.mode === 'paste') {
-    return parsePastedResourceTypes(exportItem.pastedIncludeFilterResources).length;
+    return parseIncludeFilterResourcesText(exportItem.pastedIncludeFilterResources).length;
+  }
+
+  if (exportItem.mode === 'builder') {
+    return Array.isArray(exportItem.filterBuilderRows)
+      ? exportItem.filterBuilderRows.filter(row => extractResourceType(row.resourceType)).length
+      : 0;
   }
 
   return Array.isArray(exportItem.selectedResources) ? exportItem.selectedResources.length : 0;
@@ -61,7 +67,7 @@ export function buildPasteModeModel({
   return {
     primaryResourceTypes: resourceTypes,
     firstLevelDependencies,
-    includeFilterResources: resourceTypes,
+    includeFilterResources: filterEntries,
     replaceWithDatasource: [...new Set(
       firstLevelDependencies.map(resource => `${resource}::.*`),
     )].sort(),
