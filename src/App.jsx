@@ -41,6 +41,7 @@ import {
 } from './lib/dependencyTreeVersions.js';
 
 const BUNDLED_RESOURCE_CATALOG = buildFallbackCatalog(resources);
+const HOME_URL = 'https://cxascode.github.io/';
 
 const TF_EXPORT_MODE_EXPORT = 'export';
 const TF_EXPORT_MODE_EXPORT_STATE = 'exportstate';
@@ -642,9 +643,11 @@ export default function App() {
     <header className="gcPageHeader">
       <div className="gcPageTitleRow">
         <div className="gcPageTitleGroup">
-          <div className="gcPageTitleLine">
-            <h1 className="gcPageTitle">CX as Code Export Builder</h1>
-          </div>
+          <h1 className="gcPageTitle">
+            <a className="gcSiteHomeLink" href={HOME_URL}>Home</a>
+            <span className="gcPageTitleSeparator" aria-hidden="true">/</span>
+            <span className="gcPageTitleCurrent">CX as Code Export Builder</span>
+          </h1>
         </div>
         <div className="gcPageMeta">
           <div className="gcHeaderLinks">
