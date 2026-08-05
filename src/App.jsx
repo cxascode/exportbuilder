@@ -378,9 +378,11 @@ export default function App() {
   }, [model.exports, selectedExport.name]);
 
   const mainTfTemplate = useMemo(() => {
-    if (!selectedGeneratedExport) return '';
-    return buildTfExportTemplate(selectedGeneratedExport, tfExportMode);
-  }, [selectedGeneratedExport, tfExportMode]);
+    return model.exports
+      .map(exportItem => buildTfExportTemplate(exportItem, tfExportMode))
+      .filter(Boolean)
+      .join('\n\n');
+  }, [model.exports, tfExportMode]);
 
   function startAddingExport() {
     cancelRenamingExport();
