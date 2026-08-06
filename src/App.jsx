@@ -88,7 +88,7 @@ ${formatTerraformResourceList(replaceWithDatasource)}
   exclude_attributes                 = []
   include_state_file                 = ${isExportState ? 'true' : 'false'}
 ${includeFilterBlock}  log_permission_errors              = true
-${replaceWithDatasourceBlock}  split_files_by_resource            = false
+${replaceWithDatasourceBlock}  split_files_by_resource            = true
 ${legacyArchitectFlowExporterLine}}`;
 }
 

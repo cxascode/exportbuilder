@@ -50,7 +50,7 @@ resource "genesyscloud_tf_export" "tf_export" {
     "genesyscloud_division::.*",
     "genesyscloud_user::.*"
   ]
-  split_files_by_resource            = false
+  split_files_by_resource            = true
   use_legacy_architect_flow_exporter = false
 }
 ```
