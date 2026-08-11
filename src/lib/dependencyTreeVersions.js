@@ -1,20 +1,26 @@
-export const MIN_DEPENDENCY_TREE_VERSION = '1.60.0';
-export const LATEST_DEPENDENCY_TREE_VERSION = 'latest';
-export const DEPENDENCY_TREE_BASE_URL = 'https://cxascode.github.io/dependency-tree-merged-json';
-export const DEPENDENCY_TREE_INDEX_URL = `${DEPENDENCY_TREE_BASE_URL}/index.json`;
+import {
+  buildDependencyTreeUrl,
+  DEPENDENCY_TREE_INDEX_URL,
+  LATEST_VERSION_ALIAS,
+  MIN_DEPENDENCY_TREE_VERSION,
+} from './publicDataUrls.js';
+
+export {
+  buildDependencyTreeUrl,
+  buildResourceClassificationUrl,
+  DEPENDENCY_TREE_INDEX_URL,
+  LATEST_VERSION_ALIAS as LATEST_DEPENDENCY_TREE_VERSION,
+  MIN_DEPENDENCY_TREE_VERSION,
+  OVERRIDES_URL,
+  RESOURCE_CLASSIFICATION_INDEX_URL,
+  SITE_ORIGIN,
+} from './publicDataUrls.js';
+
 const DEPENDENCY_TREE_VERSION_CACHE_KEY = 'cxascode-exportbuilder-dependency-tree-version-cache';
 const DEPENDENCY_TREE_VERSION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-export function buildDependencyTreeUrl(version = LATEST_DEPENDENCY_TREE_VERSION) {
-  if (!version || version === LATEST_DEPENDENCY_TREE_VERSION) {
-    return `${DEPENDENCY_TREE_BASE_URL}/latest.json`;
-  }
-
-  return `${DEPENDENCY_TREE_BASE_URL}/${version}.json`;
-}
-
 function parseVersion(version) {
-  if (!version || version === LATEST_DEPENDENCY_TREE_VERSION) return null;
+  if (!version || version === LATEST_VERSION_ALIAS) return null;
 
   const parts = version.split('.').map(value => Number.parseInt(value, 10));
   if (parts.length !== 3 || parts.some(value => Number.isNaN(value))) return null;
@@ -69,10 +75,10 @@ function getIndexEntries(index) {
 }
 
 export function normalizeDependencyTreeVersion(version) {
-  if (!version || version === LATEST_DEPENDENCY_TREE_VERSION) return LATEST_DEPENDENCY_TREE_VERSION;
+  if (!version || version === LATEST_VERSION_ALIAS) return LATEST_VERSION_ALIAS;
 
   const parsed = parseVersion(String(version));
-  if (!parsed) return LATEST_DEPENDENCY_TREE_VERSION;
+  if (!parsed) return LATEST_VERSION_ALIAS;
 
   return `${parsed.major}.${parsed.minor}.${parsed.patch}`;
 }
@@ -82,7 +88,7 @@ export function buildDependencyTreeVersionOptions(latestVersion, minVersion = MI
   const min = parseVersion(minVersion);
 
   if (!latest || !min || latest.major !== min.major || latest.minor < min.minor) {
-    return [LATEST_DEPENDENCY_TREE_VERSION, minVersion];
+    return [LATEST_VERSION_ALIAS, minVersion];
   }
 
   const versions = [];
@@ -91,7 +97,7 @@ export function buildDependencyTreeVersionOptions(latestVersion, minVersion = MI
     versions.push(`${latest.major}.${minor}.0`);
   }
 
-  return [LATEST_DEPENDENCY_TREE_VERSION, ...versions];
+  return [LATEST_VERSION_ALIAS, ...versions];
 }
 
 export function buildDependencyTreeVersionOptionsFromIndex(index, minVersion = MIN_DEPENDENCY_TREE_VERSION) {
@@ -99,11 +105,11 @@ export function buildDependencyTreeVersionOptionsFromIndex(index, minVersion = M
     .map(extractVersion)
     .filter(Boolean)
     .map(normalizeDependencyTreeVersion)
-    .filter(version => version !== LATEST_DEPENDENCY_TREE_VERSION)
+    .filter(version => version !== LATEST_VERSION_ALIAS)
     .filter(version => isAtLeastVersion(version, minVersion))
     .sort(compareVersionsDescending);
 
-  return [LATEST_DEPENDENCY_TREE_VERSION, ...new Set(versions)];
+  return [LATEST_VERSION_ALIAS, ...new Set(versions)];
 }
 
 export function getCachedDependencyTreeVersionOptions(now = Date.now()) {
@@ -144,21 +150,21 @@ export function getNewestListedRelease(versionOptions) {
   if (!Array.isArray(versionOptions)) return '';
 
   const found = versionOptions.find(
-    version => version && version !== LATEST_DEPENDENCY_TREE_VERSION,
+    version => version && version !== LATEST_VERSION_ALIAS,
   );
 
   return found ? String(found).trim() : '';
 }
 
 export function formatProviderVersion(version) {
-  if (!version || version === LATEST_DEPENDENCY_TREE_VERSION) return '';
+  if (!version || version === LATEST_VERSION_ALIAS) return '';
 
   const trimmed = String(version).trim();
   return trimmed.startsWith('v') ? trimmed : `v${trimmed}`;
 }
 
 export function getDependencyTreeVersionLabel(version, newestListedRelease = '') {
-  if (version === LATEST_DEPENDENCY_TREE_VERSION) {
+  if (version === LATEST_VERSION_ALIAS) {
     const latestLabel = formatProviderVersion(newestListedRelease);
     return latestLabel ? `Latest (${latestLabel})` : 'Latest';
   }

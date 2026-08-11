@@ -1,6 +1,7 @@
 import { buildResourcePathname } from './lib/permalink.js';
+import { SITE_ORIGIN } from './lib/publicDataUrls.js';
 
-const PRODUCTION_ORIGIN = 'https://cxascode.github.io';
+const PRODUCTION_ORIGIN = SITE_ORIGIN;
 
 const DEFAULT_TITLE = 'CX as Code Export Builder';
 const DEFAULT_DESCRIPTION =

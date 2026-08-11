@@ -14,8 +14,6 @@ https://cxascode.github.io/exportbuilder/genesyscloud_auth_role
 https://cxascode.github.io/exportbuilder/genesyscloud_business_rules_decision_table
 https://cxascode.github.io/exportbuilder/genesyscloud_business_rules_schema
 https://cxascode.github.io/exportbuilder/genesyscloud_case_management_caseplan
-https://cxascode.github.io/exportbuilder/genesyscloud_case_management_caseplan_create_version
-https://cxascode.github.io/exportbuilder/genesyscloud_case_management_caseplan_publish
 https://cxascode.github.io/exportbuilder/genesyscloud_case_management_stageplan
 https://cxascode.github.io/exportbuilder/genesyscloud_case_management_stepplan
 https://cxascode.github.io/exportbuilder/genesyscloud_conversations_messaging_integrations_apple
@@ -23,7 +21,6 @@ https://cxascode.github.io/exportbuilder/genesyscloud_conversations_messaging_in
 https://cxascode.github.io/exportbuilder/genesyscloud_conversations_messaging_integrations_open
 https://cxascode.github.io/exportbuilder/genesyscloud_conversations_messaging_integrations_whatsapp
 https://cxascode.github.io/exportbuilder/genesyscloud_conversations_messaging_settings
-https://cxascode.github.io/exportbuilder/genesyscloud_conversations_messaging_settings_default
 https://cxascode.github.io/exportbuilder/genesyscloud_conversations_messaging_supportedcontent
 https://cxascode.github.io/exportbuilder/genesyscloud_conversations_messaging_supportedcontent_default
 https://cxascode.github.io/exportbuilder/genesyscloud_conversations_settings
@@ -60,8 +57,6 @@ https://cxascode.github.io/exportbuilder/genesyscloud_intents_categories
 https://cxascode.github.io/exportbuilder/genesyscloud_intents_customerintents
 https://cxascode.github.io/exportbuilder/genesyscloud_journey_action_map
 https://cxascode.github.io/exportbuilder/genesyscloud_journey_action_template
-https://cxascode.github.io/exportbuilder/genesyscloud_journey_outcome
-https://cxascode.github.io/exportbuilder/genesyscloud_journey_outcome_predictor
 https://cxascode.github.io/exportbuilder/genesyscloud_journey_segment
 https://cxascode.github.io/exportbuilder/genesyscloud_journey_view_schedule
 https://cxascode.github.io/exportbuilder/genesyscloud_journey_views
@@ -75,14 +70,12 @@ https://cxascode.github.io/exportbuilder/genesyscloud_location
 https://cxascode.github.io/exportbuilder/genesyscloud_oauth_client
 https://cxascode.github.io/exportbuilder/genesyscloud_organization_authentication_settings
 https://cxascode.github.io/exportbuilder/genesyscloud_organization_presence_definition
-https://cxascode.github.io/exportbuilder/genesyscloud_orgauthorization_pairing
 https://cxascode.github.io/exportbuilder/genesyscloud_outbound_attempt_limit
 https://cxascode.github.io/exportbuilder/genesyscloud_outbound_callabletimeset
 https://cxascode.github.io/exportbuilder/genesyscloud_outbound_callanalysisresponseset
 https://cxascode.github.io/exportbuilder/genesyscloud_outbound_campaign
 https://cxascode.github.io/exportbuilder/genesyscloud_outbound_campaignrule
 https://cxascode.github.io/exportbuilder/genesyscloud_outbound_contact_list
-https://cxascode.github.io/exportbuilder/genesyscloud_outbound_contact_list_contact
 https://cxascode.github.io/exportbuilder/genesyscloud_outbound_contact_list_template
 https://cxascode.github.io/exportbuilder/genesyscloud_outbound_contactlistfilter
 https://cxascode.github.io/exportbuilder/genesyscloud_outbound_digitalruleset

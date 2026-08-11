@@ -26,7 +26,7 @@ Pick resource types from the live Genesys Cloud dependency catalog (with a bundl
 - Derives first-level dependencies and suggests `replace_with_datasource` entries as `type::.*` for those dependencies
 - Sets `use_legacy_architect_flow_exporter` to `false` for export mode and `true` for exportstate mode (matching [CX as Code Explorer](https://cxascode.github.io/) templates)
 
-Catalog mode also tracks which types are assigned across exports so you do not double-assign the same resource type.
+Catalog mode also tracks which types are assigned across exports so you do not double-assign the same resource type. Non-exportable types are hidden from the catalog picker; deprecated types remain selectable and show an amber badge.
 
 ### Paste
 
@@ -76,6 +76,20 @@ Open the URL Vite prints (typically `http://localhost:5173`).
 npm run build
 npm run preview
 ```
+
+`npm run build` syncs `src/data/resources.json` and `src/data/hiddenResourceTypes.js` from cxascode.github.io before compiling. Run `npm run verify-public-data` to check the live public JSON contract without building.
+
+### Public data contract
+
+Export Builder reads versioned JSON published by [cxascode.github.io](https://cxascode.github.io/):
+
+| Endpoint | Purpose |
+|----------|---------|
+| `dependency-tree-merged-json/{latest\|version}.json` | Resource catalog and dependencies |
+| `resource-classification/{latest\|version}.json` | Deprecated, non-exportable, and cannot-be-destroyed types |
+| `overrides.json` → `hiddenResourceTypes` | Meta export types hidden from the picker |
+
+Classification fetch failures degrade gracefully — the catalog still loads, but non-exportable filtering may be omitted until the next successful fetch.
 
 ## Deploy with GitHub Pages
 

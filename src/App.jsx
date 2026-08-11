@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FilterResourceTypeInput from './components/FilterResourceTypeInput.jsx';
+import ResourceDeprecatedBadge from './components/ResourceDeprecatedBadge.jsx';
 import { Pencil, Trash2 } from 'lucide-react';
 import resources from './data/resources.json';
+import { HIDDEN_RESOURCE_TYPES_FALLBACK } from './data/hiddenResourceTypes.js';
 import { buildFallbackCatalog, parseResourceCatalog } from './lib/resourceCatalog.js';
+import {
+  fetchResourceClassificationDocument,
+  resolveClassificationTypeSets,
+  resolveExportableResourceTypes,
+  RESOURCE_CLASSIFICATION_INDEX_URL,
+} from './lib/resourceClassification.js';
+import { getHiddenResourceTypes, normalizeSiteOverrides } from './lib/siteOverrides.js';
 import { buildExportModel } from './lib/exportModel.js';
 import {
   getAssignedResources,
@@ -38,10 +47,13 @@ import {
   getDependencyTreeVersionLabel,
   getNewestListedRelease,
   LATEST_DEPENDENCY_TREE_VERSION,
+  OVERRIDES_URL,
+  SITE_ORIGIN,
 } from './lib/dependencyTreeVersions.js';
 
-const BUNDLED_RESOURCE_CATALOG = buildFallbackCatalog(resources);
-const HOME_URL = 'https://cxascode.github.io/';
+const BUNDLED_HIDDEN_TYPES = getHiddenResourceTypes({ hiddenResourceTypes: HIDDEN_RESOURCE_TYPES_FALLBACK });
+const BUNDLED_RESOURCE_CATALOG = buildFallbackCatalog(resources, { hiddenTypes: BUNDLED_HIDDEN_TYPES });
+const HOME_URL = `${SITE_ORIGIN}/`;
 
 const TF_EXPORT_MODE_EXPORT = 'export';
 const TF_EXPORT_MODE_EXPORT_STATE = 'exportstate';
@@ -111,6 +123,10 @@ export default function App() {
     return { exports: [exportItem], selectedExportId: exportItem.id };
   }, []);
   const [resourceCatalog, setResourceCatalog] = useState(BUNDLED_RESOURCE_CATALOG);
+  const [siteOverrides, setSiteOverrides] = useState(() => normalizeSiteOverrides({
+    hiddenResourceTypes: HIDDEN_RESOURCE_TYPES_FALLBACK,
+  }));
+  const [resourceClassification, setResourceClassification] = useState(null);
   const [selectedCatalogVersion, setSelectedCatalogVersion] = useState(LATEST_DEPENDENCY_TREE_VERSION);
   const [catalogVersionOptions, setCatalogVersionOptions] = useState(() => getCachedDependencyTreeVersionOptions() || [LATEST_DEPENDENCY_TREE_VERSION]);
   const [exports, setExports] = useState(initialState.exports);
@@ -127,7 +143,20 @@ export default function App() {
   const importRef = useRef(null);
   const versionDropdownRef = useRef(null);
   const selectedCatalogVersionRef = useRef(selectedCatalogVersion);
+  const catalogLoadIdRef = useRef(0);
   const allResources = resourceCatalog.resourceTypes;
+  const exportableResources = useMemo(
+    () => resolveExportableResourceTypes(allResources, resourceClassification, siteOverrides),
+    [allResources, resourceClassification, siteOverrides],
+  );
+  const exportableResourceSet = useMemo(
+    () => new Set(exportableResources),
+    [exportableResources],
+  );
+  const deprecatedTypes = useMemo(
+    () => resolveClassificationTypeSets(resourceClassification, siteOverrides).deprecatedTypes,
+    [resourceClassification, siteOverrides],
+  );
 
   useEffect(() => {
     selectedCatalogVersionRef.current = selectedCatalogVersion;
@@ -228,40 +257,93 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadResourceCatalog() {
+    async function loadSiteOverrides() {
       try {
-        const response = await fetch(buildDependencyTreeUrl(selectedCatalogVersion), {
+        const response = await fetch(OVERRIDES_URL, {
           cache: 'no-store',
           signal: controller.signal,
         });
 
         if (!response.ok) {
-          throw new Error(`Resource catalog request failed: ${response.status}`);
+          throw new Error(`Overrides request failed: ${response.status}`);
         }
 
-        const catalog = parseResourceCatalog(await response.json());
+        setSiteOverrides(normalizeSiteOverrides(await response.json()));
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+      }
+    }
+
+    loadSiteOverrides();
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const hiddenTypes = getHiddenResourceTypes(siteOverrides, HIDDEN_RESOURCE_TYPES_FALLBACK);
+
+    async function loadResourceCatalog() {
+      const loadId = catalogLoadIdRef.current + 1;
+      catalogLoadIdRef.current = loadId;
+
+      try {
+        const catalogResponse = await fetch(buildDependencyTreeUrl(selectedCatalogVersion), {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+
+        if (!catalogResponse.ok) {
+          throw new Error(`Resource catalog request failed: ${catalogResponse.status}`);
+        }
+
+        const catalog = parseResourceCatalog(await catalogResponse.json(), { hiddenTypes });
 
         if (catalog.resourceTypes.length === 0) {
           throw new Error('Resource catalog did not contain any resource types.');
         }
 
-        const knownResourceSet = new Set(catalog.resourceTypes);
+        let classification = null;
+
+        try {
+          const indexResponse = await fetch(RESOURCE_CLASSIFICATION_INDEX_URL, {
+            cache: 'no-store',
+            signal: controller.signal,
+          });
+          const classificationIndex = indexResponse.ok ? await indexResponse.json() : [];
+
+          classification = await fetchResourceClassificationDocument(selectedCatalogVersion, {
+            catalogVersion: selectedCatalogVersion === LATEST_DEPENDENCY_TREE_VERSION ? catalog.version : null,
+            availableVersions: classificationIndex,
+            signal: controller.signal,
+          });
+        } catch (classificationError) {
+          if (classificationError.name === 'AbortError') throw classificationError;
+        }
+
+        if (loadId !== catalogLoadIdRef.current) return;
+
+        const selectableResourceSet = new Set(
+          resolveExportableResourceTypes(catalog.resourceTypes, classification, siteOverrides),
+        );
 
         setResourceCatalog(catalog);
+        setResourceClassification(classification);
         setExports(current => current.map(exportItem => ({
           ...exportItem,
-          selectedResources: getExportResources(exportItem).filter(resource => knownResourceSet.has(resource)),
+          selectedResources: getExportResources(exportItem).filter(resource => selectableResourceSet.has(resource)),
         })));
       } catch (error) {
         if (error.name === 'AbortError') return;
-        setResourceCatalog(BUNDLED_RESOURCE_CATALOG);
+        setResourceClassification(null);
+        setResourceCatalog(buildFallbackCatalog(resources, { hiddenTypes }));
       }
     }
 
     loadResourceCatalog();
 
     return () => controller.abort();
-  }, [selectedCatalogVersion]);
+  }, [selectedCatalogVersion, siteOverrides]);
 
   const selectedExport = exports.find(exportItem => exportItem.id === selectedExportId) || exports[0] || buildDefaultExport();
   const selectedExportMode = selectedExport.mode === 'paste'
@@ -300,25 +382,25 @@ export default function App() {
 
   const unassignedResources = useMemo(() => {
     return getAvailableExportResources({
-      resources: allResources,
+      resources: exportableResources,
       assigned,
       query: '',
     });
-  }, [assigned, allResources]);
+  }, [assigned, exportableResources]);
 
   const availableResources = useMemo(() => {
     const selectedSet = new Set(selectedExportResources);
 
     return getAvailableExportResources({
-      resources: allResources,
+      resources: exportableResources,
       assigned,
       query,
     }).filter(resource => !selectedSet.has(resource));
-  }, [assigned, query, allResources, selectedExportResources]);
+  }, [assigned, query, exportableResources, selectedExportResources]);
 
   const stats = useMemo(() => {
     const catalogStats = getExportStats({
-      resources: allResources,
+      resources: exportableResources,
       exports: catalogExports,
       assigned,
     });
@@ -330,18 +412,18 @@ export default function App() {
       ...catalogStats,
       selectedResourceCount: catalogStats.selectedResourceCount + nonCatalogSelectedCount,
     };
-  }, [assigned, exports, catalogExports, allResources]);
+  }, [assigned, exports, catalogExports, exportableResources]);
 
   const validation = useMemo(() => {
     return validateExports({ exports: catalogExports });
-  }, [catalogExports, allResources]);
+  }, [catalogExports]);
 
   const resourceDialog = useMemo(() => {
     if (resourceDialogType === 'known') {
       return {
-        title: 'Known resources',
-        description: 'All resource types loaded from the current dependency catalog.',
-        resources: allResources,
+        title: 'Exportable resources',
+        description: 'Resource types you can include in genesyscloud_tf_export for the selected provider version.',
+        resources: exportableResources,
       };
     }
 
@@ -362,7 +444,7 @@ export default function App() {
     }
 
     return null;
-  }, [allResources, resourceDialogType, selectedResources, unassignedResources]);
+  }, [exportableResources, resourceDialogType, selectedResources, unassignedResources]);
 
   const model = useMemo(() => {
     return buildExportModel({
@@ -477,7 +559,7 @@ export default function App() {
       }
 
       if (mode === 'catalog' && exportItem.mode !== 'catalog') {
-        const knownResourceSet = new Set(allResources);
+        const knownResourceSet = exportableResourceSet;
         const seededSelected = exportItem.mode === 'paste'
           ? (getExportResources(exportItem).length > 0
             ? getExportResources(exportItem)
@@ -611,7 +693,7 @@ export default function App() {
       try {
         const workspace = parseWorkspace({
           rawText: String(reader.result || '{}'),
-          knownResources: allResources,
+          knownResources: exportableResources,
           sanitizeExportName,
           createId: () => crypto.randomUUID(),
         });
@@ -675,7 +757,7 @@ export default function App() {
     <main className="gcContentArea">
       <div className="stats-grid">
         <button type="button" className="stat-card mini-stat stat-button" onClick={() => setResourceDialogType('known')}>
-          <div className="mini-stat-heading"><p className="eyebrow">Known</p><strong>{stats.knownResourceCount}</strong></div>
+          <div className="mini-stat-heading"><p className="eyebrow">Exportable</p><strong>{stats.knownResourceCount}</strong></div>
           <span>Resource types</span>
         </button>
         <button type="button" className="stat-card mini-stat stat-button" onClick={() => setResourceDialogType('selected')}>
@@ -833,7 +915,10 @@ export default function App() {
           {selectedExportMode === 'catalog' ? <>
           <div className="resource-list">
             {availableResources.map(resource => <div className="resource" key={resource}>
-              <code>{resource}</code>
+              <div className="resource-label">
+                <code>{resource}</code>
+                <ResourceDeprecatedBadge show={deprecatedTypes.has(resource)} />
+              </div>
               <button type="button" className="gcHeaderLink" onClick={() => moveToExport(resource)} title={`Add to ${selectedExport.name}`}>add</button>
             </div>)}
             {availableResources.length === 0 && <p className="empty">No available resources match that filter.</p>}
@@ -854,7 +939,7 @@ export default function App() {
                     <td className="filter-builder-type-cell">
                       <FilterResourceTypeInput
                         value={row.resourceType}
-                        resources={allResources}
+                        resources={exportableResources}
                         onChange={next => updateFilterBuilderRow(row.id, 'resourceType', next)}
                       />
                     </td>
@@ -940,7 +1025,10 @@ export default function App() {
           </div>
           <div className="resource-list">
             {filteredSelectedExportResources.map(resource => <div className="resource" key={resource}>
-              <code>{resource}</code>
+              <div className="resource-label">
+                <code>{resource}</code>
+                <ResourceDeprecatedBadge show={deprecatedTypes.has(resource)} />
+              </div>
               <div className="actions">
                 <button type="button" className="gcClearButton destructive" onClick={() => removeFromExport(resource, selectedExport.id)}>remove</button>
               </div>

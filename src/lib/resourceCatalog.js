@@ -1,14 +1,14 @@
-const EXCLUDED_RESOURCE_TYPES = new Set([
-  'genesyscloud_bcp_tf_exporter',
-  'genesyscloud_tf_export',
-]);
+import { HIDDEN_RESOURCE_TYPES_FALLBACK } from '../data/hiddenResourceTypes.js';
 
-function isIncludedResourceType(type) {
-  return type && !EXCLUDED_RESOURCE_TYPES.has(type);
+const DEFAULT_HIDDEN_RESOURCE_TYPES = new Set(HIDDEN_RESOURCE_TYPES_FALLBACK);
+
+function isIncludedResourceType(type, hiddenTypes) {
+  return type && !hiddenTypes.has(type);
 }
 
-export function parseResourceCatalog(catalog) {
+export function parseResourceCatalog(catalog, { hiddenTypes = DEFAULT_HIDDEN_RESOURCE_TYPES } = {}) {
   const entries = Array.isArray(catalog?.resources) ? catalog.resources : [];
+  const excludedTypes = hiddenTypes instanceof Set ? hiddenTypes : new Set(hiddenTypes);
 
   const resources = entries
     .map(resource => ({
@@ -16,7 +16,7 @@ export function parseResourceCatalog(catalog) {
       type: resource.type,
       dependencies: Array.isArray(resource.dependencies) ? resource.dependencies : [],
     }))
-    .filter(resource => isIncludedResourceType(resource.type))
+    .filter(resource => isIncludedResourceType(resource.type, excludedTypes))
     .sort((left, right) => left.type.localeCompare(right.type));
 
   return buildResourceCatalog({
@@ -42,10 +42,12 @@ export function buildResourceCatalog({ version = null, resources = [] }) {
   };
 }
 
-export function buildFallbackCatalog(resourceTypes) {
+export function buildFallbackCatalog(resourceTypes, { hiddenTypes = DEFAULT_HIDDEN_RESOURCE_TYPES } = {}) {
+  const excludedTypes = hiddenTypes instanceof Set ? hiddenTypes : new Set(hiddenTypes);
+
   return buildResourceCatalog({
     version: null,
-    resources: resourceTypes.filter(isIncludedResourceType).map(type => ({
+    resources: resourceTypes.filter(type => isIncludedResourceType(type, excludedTypes)).map(type => ({
       name: type,
       type,
       dependencies: [],

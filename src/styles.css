@@ -706,6 +706,39 @@ textarea:focus-visible,
   flex-direction: column;
 }
 
+.resource-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gcDeprecatedBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--gc-chip-height);
+  padding: 0 var(--gc-chip-padding-x);
+  border-radius: var(--gc-chip-radius);
+  border: 1px solid var(--gc-border);
+  background: var(--gc-amber-weak);
+  color: var(--gc-amber);
+  font-size: var(--gc-chip-font-size);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.resource-label code {
+  display: inline;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .resource code {
   display: block;
   font-size: 13px;

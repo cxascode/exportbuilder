@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "prebuild": "node scripts/sync-resources-fallback.mjs",
     "build": "node scripts/write-sitemap.mjs && vite build && cp dist/index.html dist/404.html",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "verify-public-data": "node scripts/verify-public-data.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
