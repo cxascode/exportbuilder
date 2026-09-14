@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "genesys-spark": "^4.262.1",
-    "lucide-react": "^1.33.0",
+    "genesys-spark": "^4.264.1",
+    "lucide-react": "^1.45.0",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"
