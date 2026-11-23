@@ -3,6 +3,7 @@ import {
   DEPENDENCY_TREE_INDEX_URL,
   LATEST_VERSION_ALIAS,
   MIN_DEPENDENCY_TREE_VERSION,
+  MIN_EXPORT_OMIT_UNRESOLVED_REFS_VERSION,
 } from './publicDataUrls.js';
 
 export {
@@ -46,13 +47,19 @@ function compareVersionsDescending(left, right) {
   return compareParsedVersions(parsedRight, parsedLeft);
 }
 
-function isAtLeastVersion(version, minVersion) {
+export function isAtLeastVersion(version, minVersion) {
   const parsedVersion = parseVersion(version);
   const parsedMinVersion = parseVersion(minVersion);
 
   if (!parsedVersion || !parsedMinVersion) return false;
 
   return compareParsedVersions(parsedVersion, parsedMinVersion) >= 0;
+}
+
+export function supportsExportOmitUnresolvedRefs(providerVersion) {
+  const version = String(providerVersion || '').trim();
+  if (!version || version === LATEST_VERSION_ALIAS) return true;
+  return isAtLeastVersion(version, MIN_EXPORT_OMIT_UNRESOLVED_REFS_VERSION);
 }
 
 function extractVersion(value) {
