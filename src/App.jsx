@@ -47,6 +47,7 @@ import {
   getDependencyTreeVersionLabel,
   getNewestListedRelease,
   LATEST_DEPENDENCY_TREE_VERSION,
+  supportsExportOmitUnresolvedRefs,
   OVERRIDES_URL,
   SITE_ORIGIN,
 } from './lib/dependencyTreeVersions.js';
@@ -68,12 +69,15 @@ function formatTerraformResourceList(values) {
   return values.map(value => `    "${escapeHclString(value)}"`).join(',\n');
 }
 
-function buildTfExportTemplate(exportItem, mode = TF_EXPORT_MODE_EXPORT) {
+function buildTfExportTemplate(exportItem, mode = TF_EXPORT_MODE_EXPORT, providerVersion = '') {
   const includeFilterResources = exportItem?.includeFilterResources || [];
   const replaceWithDatasource = exportItem?.replaceWithDatasource || [];
   const tfExportResourceName = exportItem?.tfExportResourceName || 'tf_export';
   const isExportState = mode === TF_EXPORT_MODE_EXPORT_STATE;
   const directory = getTfExportDirectory(tfExportResourceName);
+  const omitUnresolvedRefsLine = supportsExportOmitUnresolvedRefs(providerVersion)
+    ? '  export_omit_unresolved_refs        = true\n'
+    : '';
 
   const includeFilterBlock = includeFilterResources.length === 0
     ? '  include_filter_resources           = []\n'
@@ -97,7 +101,7 @@ ${formatTerraformResourceList(replaceWithDatasource)}
   directory                          = "${directory}"
   enable_dependency_resolution       = ${isExportState ? 'false' : 'true'}
   export_format                      = "hcl"
-  exclude_attributes                 = []
+${omitUnresolvedRefsLine}  exclude_attributes                 = []
   include_state_file                 = ${isExportState ? 'true' : 'false'}
 ${includeFilterBlock}  log_permission_errors              = true
 ${replaceWithDatasourceBlock}  split_files_by_resource            = true
@@ -459,12 +463,16 @@ export default function App() {
     return model.exports.find(item => item.name === selectedExport.name) || model.exports[0] || null;
   }, [model.exports, selectedExport.name]);
 
+  const tfExportProviderVersion = selectedCatalogVersion === LATEST_DEPENDENCY_TREE_VERSION
+    ? newestListedRelease
+    : selectedCatalogVersion;
+
   const mainTfTemplate = useMemo(() => {
     return model.exports
-      .map(exportItem => buildTfExportTemplate(exportItem, tfExportMode))
+      .map(exportItem => buildTfExportTemplate(exportItem, tfExportMode, tfExportProviderVersion))
       .filter(Boolean)
       .join('\n\n');
-  }, [model.exports, tfExportMode]);
+  }, [model.exports, tfExportMode, tfExportProviderVersion]);
 
   function startAddingExport() {
     cancelRenamingExport();

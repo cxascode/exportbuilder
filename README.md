@@ -25,6 +25,7 @@ Pick resource types from the live Genesys Cloud dependency catalog (with a bundl
 - Seeds `include_filter_resources` with the resource types you select
 - Derives first-level dependencies and suggests `replace_with_datasource` entries as `type::.*` for those dependencies
 - Sets `use_legacy_architect_flow_exporter` to `false` for export mode and `true` for exportstate mode (matching [CX as Code Explorer](https://cxascode.github.io/) templates)
+- Sets `export_omit_unresolved_refs` to `true` when the selected provider catalog version is **1.84.0** or newer (omitted for older versions in the dropdown)
 
 Catalog mode also tracks which types are assigned across exports so you do not double-assign the same resource type. Non-exportable types are hidden from the catalog picker; deprecated types remain selectable and show an amber badge.
 
@@ -39,6 +40,7 @@ resource "genesyscloud_tf_export" "tf_export" {
   directory                          = "./genesyscloud"
   enable_dependency_resolution       = true
   export_format                      = "hcl"
+  export_omit_unresolved_refs        = true
   exclude_attributes                 = []
   include_state_file                 = false
   include_filter_resources           = [

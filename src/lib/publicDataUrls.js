@@ -1,5 +1,7 @@
 export const SITE_ORIGIN = 'https://cxascode.github.io';
 export const MIN_DEPENDENCY_TREE_VERSION = '1.60.0';
+/** Oldest provider release with genesyscloud_tf_export.export_omit_unresolved_refs. */
+export const MIN_EXPORT_OMIT_UNRESOLVED_REFS_VERSION = '1.84.0';
 export const LATEST_VERSION_ALIAS = 'latest';
 
 export const DEPENDENCY_TREE_MERGED_DIR = 'dependency-tree-merged-json';
